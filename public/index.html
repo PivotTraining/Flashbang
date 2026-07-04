@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Flashbang</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="stylesheet" href="/css/style.css" />
+</head>
+<body>
+  <div id="menu">
+    <h1>FLASHBANG</h1>
+    <input id="nameInput" maxlength="16" placeholder="Enter your name" />
+    <button id="playBtn">Play</button>
+    <p class="hint">WASD move · Mouse look · Click to shoot · G to throw flashbang · Space to jump</p>
+  </div>
+
+  <div id="hud" class="hidden">
+    <div id="crosshair"></div>
+    <div id="healthBar"><div id="healthFill"></div><span id="healthText">100</span></div>
+    <div id="grenadeIndicator">Flashbang: <span id="grenadeCount">1</span> (G)</div>
+    <div id="scoreboard"></div>
+    <div id="killfeed"></div>
+    <div id="flashOverlay"></div>
+    <div id="deathOverlay" class="hidden">
+      <div>You died</div>
+      <div id="respawnTimer"></div>
+    </div>
+  </div>
+
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "/vendor/three/three.module.js"
+      }
+    }
+  </script>
+  <script src="/socket.io/socket.io.js"></script>
+  <script type="module" src="/js/main.js"></script>
+</body>
+</html>

@@ -1,0 +1,87 @@
+* { box-sizing: border-box; }
+html, body {
+  margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden;
+  background: #111; color: #eee; font-family: 'Segoe UI', Arial, sans-serif;
+}
+canvas { display: block; }
+
+#menu {
+  position: fixed; inset: 0; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 14px;
+  background: radial-gradient(circle at 50% 40%, #2a2a33, #0a0a0d);
+  z-index: 20;
+}
+#menu h1 {
+  font-size: 3rem; letter-spacing: 0.3em; margin: 0;
+  color: #fff; text-shadow: 0 0 20px #ffdd55;
+}
+#menu input {
+  padding: 10px 14px; font-size: 1rem; border-radius: 4px; border: 1px solid #555;
+  background: #222; color: #fff; width: 240px; text-align: center;
+}
+#menu button {
+  padding: 10px 30px; font-size: 1.1rem; border-radius: 4px; border: none;
+  background: #ffdd55; color: #111; font-weight: bold; cursor: pointer;
+}
+#menu button:hover { background: #ffe986; }
+#menu .hint { color: #999; font-size: 0.85rem; max-width: 360px; text-align: center; }
+
+.hidden { display: none !important; }
+
+#hud { position: fixed; inset: 0; pointer-events: none; z-index: 10; }
+
+#crosshair {
+  position: absolute; top: 50%; left: 50%; width: 18px; height: 18px;
+  transform: translate(-50%, -50%);
+}
+#crosshair::before, #crosshair::after {
+  content: ''; position: absolute; background: #fff; box-shadow: 0 0 2px #000;
+}
+#crosshair::before { top: 50%; left: 0; width: 100%; height: 2px; transform: translateY(-50%); }
+#crosshair::after { left: 50%; top: 0; height: 100%; width: 2px; transform: translateX(-50%); }
+
+#healthBar {
+  position: absolute; bottom: 24px; left: 24px; width: 220px; height: 26px;
+  background: #222; border: 2px solid #555; border-radius: 4px; overflow: hidden;
+}
+#healthFill {
+  height: 100%; width: 100%; background: linear-gradient(90deg, #ff5555, #ff8888);
+  transition: width 0.15s ease-out;
+}
+#healthText {
+  position: absolute; top: 3px; left: 8px; font-weight: bold; color: #fff;
+  text-shadow: 0 0 3px #000;
+}
+
+#grenadeIndicator {
+  position: absolute; bottom: 24px; right: 24px; padding: 6px 12px;
+  background: rgba(0,0,0,0.5); border-radius: 4px; font-size: 0.95rem;
+}
+
+#scoreboard {
+  position: absolute; top: 16px; right: 16px; background: rgba(0,0,0,0.45);
+  padding: 8px 12px; border-radius: 4px; font-size: 0.85rem; min-width: 160px;
+}
+#scoreboard .row { display: flex; justify-content: space-between; gap: 10px; }
+#scoreboard .me { color: #ffdd55; font-weight: bold; }
+
+#killfeed {
+  position: absolute; top: 16px; left: 16px; display: flex; flex-direction: column;
+  gap: 4px; font-size: 0.85rem;
+}
+#killfeed .entry {
+  background: rgba(0,0,0,0.45); padding: 4px 10px; border-radius: 3px;
+  animation: fadeOut 4s forwards;
+}
+@keyframes fadeOut { 0%, 70% { opacity: 1; } 100% { opacity: 0; } }
+
+#flashOverlay {
+  position: absolute; inset: 0; background: #fff; opacity: 0;
+}
+
+#deathOverlay {
+  position: absolute; inset: 0; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 10px;
+  background: rgba(80,0,0,0.35); font-size: 2rem; color: #fff;
+}
+#respawnTimer { font-size: 1.2rem; color: #ffdd55; }
