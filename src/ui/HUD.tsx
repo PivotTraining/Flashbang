@@ -59,7 +59,7 @@ const topBar: React.CSSProperties = {
   right: 0,
   display: "flex",
   justifyContent: "space-between",
-  padding: "14px 20px",
+  padding: "14px 20px 14px 110px",
   color: "#fff",
   textShadow: "0 1px 3px rgba(0,0,0,0.6)",
   fontSize: 14,
