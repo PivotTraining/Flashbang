@@ -16,10 +16,12 @@ export function useMovementInput() {
       const p = pressed.current;
       let x = 0;
       let z = 0;
-      if (p.w || p.arrowup) z -= 1;
-      if (p.s || p.arrowdown) z += 1;
-      if (p.a || p.arrowleft) x -= 1;
-      if (p.d || p.arrowright) x += 1;
+      // WASD only — arrow keys are bound to attack directions in battle, and
+      // double-binding them would fire a kick every time you stepped back.
+      if (p.w) z -= 1;
+      if (p.s) z += 1;
+      if (p.a) x -= 1;
+      if (p.d) x += 1;
       intent.current = { x, z };
     };
 
