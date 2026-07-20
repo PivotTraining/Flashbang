@@ -1,149 +1,180 @@
-import { useRef } from "react";
+import { useRef, useMemo } from "react";
 import { Canvas, useFrame } from "@react-three/fiber";
-import type { Group } from "three";
+import { EffectComposer, Bloom, Vignette } from "@react-three/postprocessing";
+import * as THREE from "three";
+import type { Group, Points } from "three";
+import ArmoredFighter from "../../characters/ArmoredFighter";
+import ProceduralEnvironment from "../../scene/ProceduralEnvironment";
 
-// Center-stage hero: large armored fighter with purple energy accents on a
-// glowing platform, dark futuristic/cosmic city behind (home screen LOCKED
-// spec). All-original stylized figure — no franchise likeness.
+// Cinematic home stage: equipped fighter on a glowing platform against a
+// dark futuristic city (home screen LOCKED spec, handoff doc §5).
 
-function ArmoredFigure() {
-  const groupRef = useRef<Group>(null);
+function Platform({ energy }: { energy: string }) {
+  const outer = useRef<Group>(null);
+  const inner = useRef<Group>(null);
 
   useFrame(({ clock }) => {
-    if (!groupRef.current) return;
     const t = clock.getElapsedTime();
-    groupRef.current.rotation.y = Math.sin(t * 0.25) * 0.25;
-    groupRef.current.position.y = Math.sin(t * 0.8) * 0.04;
-  });
-
-  const armor = { color: "#16121f", metalness: 0.85, roughness: 0.35 };
-  const glow = {
-    color: "#7b2fff",
-    emissive: "#8a3bff",
-    emissiveIntensity: 2.2,
-    roughness: 0.2,
-    metalness: 0.1,
-  };
-
-  return (
-    <group ref={groupRef} position={[0, -0.1, 0]}>
-      {/* legs */}
-      <mesh position={[-0.24, 0.62, 0]} castShadow>
-        <capsuleGeometry args={[0.14, 0.85, 6, 12]} />
-        <meshStandardMaterial {...armor} />
-      </mesh>
-      <mesh position={[0.24, 0.62, 0]} castShadow>
-        <capsuleGeometry args={[0.14, 0.85, 6, 12]} />
-        <meshStandardMaterial {...armor} />
-      </mesh>
-
-      {/* torso */}
-      <mesh position={[0, 1.55, 0]} castShadow>
-        <capsuleGeometry args={[0.34, 0.6, 6, 12]} />
-        <meshStandardMaterial {...armor} />
-      </mesh>
-
-      {/* chest energy core */}
-      <mesh position={[0, 1.68, 0.28]}>
-        <sphereGeometry args={[0.09, 24, 24]} />
-        <meshStandardMaterial {...glow} />
-      </mesh>
-
-      {/* shoulder plates */}
-      <mesh position={[-0.5, 1.92, 0]} rotation={[0, 0, 0.4]} castShadow>
-        <boxGeometry args={[0.3, 0.16, 0.3]} />
-        <meshStandardMaterial {...armor} />
-      </mesh>
-      <mesh position={[0.5, 1.92, 0]} rotation={[0, 0, -0.4]} castShadow>
-        <boxGeometry args={[0.3, 0.16, 0.3]} />
-        <meshStandardMaterial {...armor} />
-      </mesh>
-
-      {/* arms */}
-      <mesh position={[-0.52, 1.4, 0]} rotation={[0, 0, 0.12]} castShadow>
-        <capsuleGeometry args={[0.11, 0.7, 6, 12]} />
-        <meshStandardMaterial {...armor} />
-      </mesh>
-      <mesh position={[0.52, 1.4, 0]} rotation={[0, 0, -0.12]} castShadow>
-        <capsuleGeometry args={[0.11, 0.7, 6, 12]} />
-        <meshStandardMaterial {...armor} />
-      </mesh>
-
-      {/* energy lines on arms */}
-      <mesh position={[-0.52, 1.42, 0.1]}>
-        <boxGeometry args={[0.03, 0.6, 0.03]} />
-        <meshStandardMaterial {...glow} />
-      </mesh>
-      <mesh position={[0.52, 1.42, 0.1]}>
-        <boxGeometry args={[0.03, 0.6, 0.03]} />
-        <meshStandardMaterial {...glow} />
-      </mesh>
-
-      {/* head */}
-      <mesh position={[0, 2.22, 0]} castShadow>
-        <sphereGeometry args={[0.19, 24, 24]} />
-        <meshStandardMaterial {...armor} />
-      </mesh>
-      {/* visor glow */}
-      <mesh position={[0, 2.24, 0.15]}>
-        <boxGeometry args={[0.22, 0.05, 0.08]} />
-        <meshStandardMaterial {...glow} />
-      </mesh>
-
-      {/* held glowing ball at the hip */}
-      <mesh position={[0.55, 1.0, 0.18]}>
-        <sphereGeometry args={[0.16, 32, 32]} />
-        <meshStandardMaterial
-          color="#a555ff"
-          emissive="#9333ff"
-          emissiveIntensity={2.6}
-          roughness={0.15}
-        />
-      </mesh>
-    </group>
-  );
-}
-
-function Platform() {
-  const ringRef = useRef<Group>(null);
-  useFrame(({ clock }) => {
-    if (ringRef.current) ringRef.current.rotation.z = clock.getElapsedTime() * 0.3;
+    if (outer.current) outer.current.rotation.z = t * 0.16;
+    if (inner.current) inner.current.rotation.z = -t * 0.28;
   });
 
   return (
     <group>
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.01, 0]}>
-        <circleGeometry args={[1.4, 48]} />
+      {/* disc */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.012, 0]} receiveShadow>
+        <circleGeometry args={[1.5, 64]} />
         <meshStandardMaterial
-          color="#1a1030"
-          emissive="#5b21b6"
-          emissiveIntensity={0.7}
-          roughness={0.3}
+          color="#150c28"
+          emissive={new THREE.Color(energy)}
+          emissiveIntensity={0.32}
+          metalness={0.6}
+          roughness={0.25}
         />
       </mesh>
-      <group ref={ringRef} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.02, 0]}>
+
+      {/* rotating rings */}
+      <group ref={outer} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.02, 0]}>
         <mesh>
-          <ringGeometry args={[1.45, 1.55, 64]} />
-          <meshStandardMaterial
-            color="#7b2fff"
-            emissive="#8a3bff"
-            emissiveIntensity={2}
+          <ringGeometry args={[1.54, 1.63, 96]} />
+          <meshBasicMaterial color={energy} toneMapped={false} />
+        </mesh>
+        {/* ring notches */}
+        {Array.from({ length: 12 }).map((_, i) => (
+          <mesh
+            key={i}
+            position={[
+              Math.cos((i / 12) * Math.PI * 2) * 1.72,
+              Math.sin((i / 12) * Math.PI * 2) * 1.72,
+              0,
+            ]}
+          >
+            <planeGeometry args={[0.1, 0.03]} />
+            <meshBasicMaterial color={energy} toneMapped={false} />
+          </mesh>
+        ))}
+      </group>
+
+      <group ref={inner} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.021, 0]}>
+        <mesh>
+          <ringGeometry args={[1.18, 1.22, 80]} />
+          <meshBasicMaterial
+            color={energy}
+            transparent
+            opacity={0.55}
+            toneMapped={false}
           />
         </mesh>
       </group>
+
+      {/* upward light shaft — fades out with height so it reads as glow,
+          not a solid tube */}
+      <mesh position={[0, 2.1, 0]}>
+        <cylinderGeometry args={[1.9, 1.2, 4.2, 40, 1, true]} />
+        <shaderMaterial
+          transparent
+          depthWrite={false}
+          side={THREE.DoubleSide}
+          blending={THREE.AdditiveBlending}
+          uniforms={{ uColor: { value: new THREE.Color(energy) } }}
+          vertexShader={`
+            varying float vH;
+            void main() {
+              vH = uv.y;
+              gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+            }
+          `}
+          fragmentShader={`
+            uniform vec3 uColor;
+            varying float vH;
+            void main() {
+              float fade = pow(1.0 - vH, 2.4) * 0.16;
+              gl_FragColor = vec4(uColor, fade);
+            }
+          `}
+        />
+      </mesh>
     </group>
   );
 }
 
+function EnergyMotes({ energy }: { energy: string }) {
+  const ref = useRef<Points>(null);
+
+  const { positions, count } = useMemo(() => {
+    const count = 220;
+    const positions = new Float32Array(count * 3);
+    for (let i = 0; i < count; i++) {
+      const a = (i / count) * Math.PI * 2 * 7;
+      const seed = Math.sin(i * 91.7) * 43758.5453;
+      const r = seed - Math.floor(seed);
+      const radius = 0.8 + r * 4.2;
+      positions[i * 3] = Math.cos(a) * radius;
+      positions[i * 3 + 1] = r * 5.2;
+      positions[i * 3 + 2] = Math.sin(a) * radius * 0.7;
+    }
+    return { positions, count };
+  }, []);
+
+  useFrame(({ clock }) => {
+    if (!ref.current) return;
+    const t = clock.getElapsedTime();
+    const arr = ref.current.geometry.attributes.position.array as Float32Array;
+    for (let i = 0; i < count; i++) {
+      const base = positions[i * 3 + 1];
+      arr[i * 3 + 1] = ((base + t * 0.22) % 5.2);
+    }
+    ref.current.geometry.attributes.position.needsUpdate = true;
+  });
+
+  return (
+    <points ref={ref}>
+      <bufferGeometry>
+        <bufferAttribute
+          attach="attributes-position"
+          args={[positions.slice(), 3]}
+        />
+      </bufferGeometry>
+      <pointsMaterial
+        size={0.035}
+        color={energy}
+        transparent
+        opacity={0.6}
+        depthWrite={false}
+        toneMapped={false}
+      />
+    </points>
+  );
+}
+
 function CityBackdrop() {
-  // deterministic pseudo-random building layout
-  const buildings: { x: number; h: number; z: number; w: number }[] = [];
-  for (let i = 0; i < 26; i++) {
-    const seed = Math.sin(i * 127.1) * 43758.5453;
-    const r = seed - Math.floor(seed);
-    const x = -18 + i * 1.5 + r * 0.8;
-    buildings.push({ x, h: 3 + r * 9, z: -16 - (i % 5) * 3, w: 1 + r * 1.1 });
-  }
+  const buildings = useMemo(() => {
+    const out: {
+      x: number;
+      h: number;
+      z: number;
+      w: number;
+      hue: string;
+      lit: boolean;
+    }[] = [];
+    const hues = ["#7b2fff", "#3b6bff", "#c026d3", "#5b21b6", "#2563eb"];
+    for (let i = 0; i < 46; i++) {
+      const s1 = Math.sin(i * 127.1) * 43758.5453;
+      const r1 = s1 - Math.floor(s1);
+      const s2 = Math.sin(i * 311.7) * 24634.6345;
+      const r2 = s2 - Math.floor(s2);
+      const ring = i % 3;
+      out.push({
+        x: -26 + i * 1.15 + r1 * 1.2,
+        h: 3 + r1 * 11 + ring * 1.5,
+        z: -14 - ring * 7 - r2 * 5,
+        w: 1 + r2 * 1.5,
+        hue: hues[i % hues.length],
+        lit: r1 > 0.35,
+      });
+    }
+    return out;
+  }, []);
 
   return (
     <group>
@@ -151,16 +182,23 @@ function CityBackdrop() {
         <group key={i} position={[b.x, b.h / 2, b.z]}>
           <mesh>
             <boxGeometry args={[b.w, b.h, b.w]} />
-            <meshStandardMaterial color="#0d0a16" roughness={0.9} />
+            <meshStandardMaterial color="#080614" roughness={0.95} metalness={0.1} />
           </mesh>
-          {/* lit windows strip */}
-          <mesh position={[0, 0.1, b.w / 2 + 0.01]}>
-            <planeGeometry args={[b.w * 0.55, b.h * 0.82]} />
-            <meshStandardMaterial
-              color="#150f26"
-              emissive={i % 3 === 0 ? "#7b2fff" : i % 3 === 1 ? "#3b6bff" : "#c026d3"}
-              emissiveIntensity={0.45}
-            />
+          {b.lit && (
+            <mesh position={[0, 0.1, b.w / 2 + 0.02]}>
+              <planeGeometry args={[b.w * 0.6, b.h * 0.8]} />
+              <meshBasicMaterial
+                color={b.hue}
+                transparent
+                opacity={0.22}
+                toneMapped={false}
+              />
+            </mesh>
+          )}
+          {/* rooftop beacon */}
+          <mesh position={[0, b.h / 2 + 0.06, 0]}>
+            <sphereGeometry args={[0.05, 8, 8]} />
+            <meshBasicMaterial color={b.hue} toneMapped={false} />
           </mesh>
         </group>
       ))}
@@ -168,32 +206,61 @@ function CityBackdrop() {
   );
 }
 
-export default function HeroScene() {
+export default function HeroScene({ energy = "#a855f7" }: { energy?: string }) {
   return (
     <Canvas
       shadows
-      camera={{ fov: 38, position: [0, 2.1, 8.2] }}
-      onCreated={({ camera }) => camera.lookAt(0, 1.15, 0)}
+      dpr={[1, 1.5]}
+      camera={{ fov: 34, position: [0, 1.62, 7.4] }}
+      onCreated={({ camera, gl }) => {
+        camera.lookAt(0, 1.28, 0);
+        gl.toneMapping = THREE.ACESFilmicToneMapping;
+        gl.toneMappingExposure = 1.15;
+      }}
       style={{ position: "absolute", inset: 0 }}
     >
-      <color attach="background" args={["#07040e"]} />
-      <fog attach="fog" args={["#0a0616", 10, 38]} />
+      <color attach="background" args={["#05030c"]} />
+      <fog attach="fog" args={["#0a0618", 11, 42]} />
 
-      <ambientLight intensity={0.25} />
-      <pointLight position={[0, 3.5, 3]} intensity={16} color="#a06bff" />
-      <pointLight position={[-3, 1.2, 2]} intensity={12} color="#4338ca" />
-      <pointLight position={[0, 0.4, 1.4]} intensity={10} color="#8a3bff" />
-      <directionalLight position={[4, 8, 4]} intensity={0.5} color="#c4b5fd" />
+      <ambientLight intensity={0.22} />
+      {/* key rim from behind-left, the classic hero silhouette light */}
+      <spotLight
+        position={[-4, 5.5, -2.5]}
+        angle={0.7}
+        penumbra={0.9}
+        intensity={90}
+        color="#9d5cff"
+        castShadow
+      />
+      {/* cool fill from the right */}
+      <pointLight position={[3.4, 2.4, 2.6]} intensity={22} color="#3b6bff" />
+      {/* warm-ish bounce off the platform */}
+      <pointLight position={[0, 0.35, 1.1]} intensity={16} color={energy} />
+      {/* soft top light so the helmet reads */}
+      <directionalLight position={[1.5, 7, 3]} intensity={0.7} color="#d8c9ff" />
 
-      <ArmoredFigure />
-      <Platform />
+      <ProceduralEnvironment intensity={0.32} />
+      <ArmoredFighter energy={energy} />
+      <Platform energy={energy} />
+      <EnergyMotes energy={energy} />
       <CityBackdrop />
 
-      {/* ground plane catching the platform glow */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.01, 0]}>
-        <planeGeometry args={[80, 80]} />
-        <meshStandardMaterial color="#0a0714" roughness={0.85} />
+      {/* ground */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, 0]} receiveShadow>
+        <planeGeometry args={[120, 120]} />
+        <meshStandardMaterial color="#08060f" roughness={0.72} metalness={0.35} />
       </mesh>
+
+      <EffectComposer>
+        <Bloom
+          intensity={1.25}
+          luminanceThreshold={0.62}
+          luminanceSmoothing={0.32}
+          mipmapBlur
+          radius={0.72}
+        />
+        <Vignette offset={0.28} darkness={0.72} />
+      </EffectComposer>
     </Canvas>
   );
 }

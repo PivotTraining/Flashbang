@@ -1,5 +1,8 @@
 import { Canvas } from "@react-three/fiber";
+import { EffectComposer, Bloom } from "@react-three/postprocessing";
+import * as THREE from "three";
 import Arena from "../scene/Arena";
+import ProceduralEnvironment from "../scene/ProceduralEnvironment";
 import Player from "../scene/Player";
 import Robot from "../scene/Robot";
 import Ball from "../scene/Ball";
@@ -28,13 +31,31 @@ export default function TrainingScreen() {
 
   return (
     <div style={{ position: "relative", width: "100vw", height: "100vh" }}>
-      <Canvas shadows camera={{ fov: 55, position: [0, 3, 10] }}>
+      <Canvas
+        shadows
+        dpr={[1, 1.5]}
+        camera={{ fov: 55, position: [0, 3, 10] }}
+        onCreated={({ gl }) => {
+          gl.toneMapping = THREE.ACESFilmicToneMapping;
+          gl.toneMappingExposure = 1.05;
+        }}
+      >
+        <ProceduralEnvironment intensity={0.5} />
         <Arena />
         <Player />
         <Robot />
         <Ball />
         <CameraRig />
         <GameLoop />
+        <EffectComposer>
+          {/* subtle in daylight — only the ball/energy should bloom */}
+          <Bloom
+            intensity={0.72}
+            luminanceThreshold={0.85}
+            luminanceSmoothing={0.25}
+            mipmapBlur
+          />
+        </EffectComposer>
       </Canvas>
       <ActionBridge />
       <HUD />

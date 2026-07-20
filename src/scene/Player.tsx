@@ -5,6 +5,7 @@ import type { Group } from "three";
 import { cameraState, playerTransform } from "./playerTransform";
 import { useMovementInput } from "../input/useKeyboard";
 import { registerPlayerHandPositionGetter, type Vec3 } from "../state/ballStore";
+import ArmoredFighter from "../characters/ArmoredFighter";
 
 const MOVE_SPEED = 4.2;
 const ARENA_RADIUS = 9;
@@ -14,8 +15,10 @@ const ARENA_RADIUS = 9;
 // gravity/CharacterController yet — flat graybox ground only for Pass 1.
 export default function Player() {
   const groupRef = useRef<Group>(null);
+  const bobRef = useRef<Group>(null);
   const moveIntent = useMovementInput();
   const facingQuat = useRef(new THREE.Quaternion());
+  const strideTime = useRef(0);
 
   useEffect(() => {
     registerPlayerHandPositionGetter((): Vec3 => {
@@ -43,7 +46,9 @@ export default function Player() {
       .addScaledVector(forward, -z)
       .addScaledVector(right, x);
 
-    if (move.lengthSq() > 0.0001) {
+    const moving = move.lengthSq() > 0.0001;
+
+    if (moving) {
       move.normalize();
       playerTransform.position.addScaledVector(move, MOVE_SPEED * dt);
 
@@ -64,6 +69,21 @@ export default function Player() {
         targetYaw,
       );
       facingQuat.current.slerp(targetQuat, Math.min(1, dt * 10));
+
+      strideTime.current += dt * 9;
+    } else {
+      strideTime.current += dt * 1.6;
+    }
+
+    // Stand-in locomotion: vertical bob + lean while moving. Replaced by
+    // real clip playback once a rigged character is authored.
+    if (bobRef.current) {
+      const amp = moving ? 0.055 : 0.014;
+      bobRef.current.position.y = Math.abs(Math.sin(strideTime.current)) * amp;
+      bobRef.current.rotation.x = moving ? -0.07 : 0;
+      bobRef.current.rotation.z = moving
+        ? Math.sin(strideTime.current) * 0.035
+        : 0;
     }
 
     if (groupRef.current) {
@@ -74,15 +94,15 @@ export default function Player() {
 
   return (
     <group ref={groupRef}>
-      <mesh position={[0, 0.9, 0]} castShadow>
-        <capsuleGeometry args={[0.35, 0.9, 6, 12]} />
-        <meshStandardMaterial color="#3d6bff" />
-      </mesh>
-      {/* facing indicator */}
-      <mesh position={[0, 1.1, 0.35]}>
-        <coneGeometry args={[0.12, 0.28, 12]} />
-        <meshStandardMaterial color="#ffffff" />
-      </mesh>
+      <group ref={bobRef}>
+        <ArmoredFighter
+          energy="#4da3ff"
+          armorColor="#3d4a68"
+          idleMotion={false}
+          showOrb={false}
+          showCape={false}
+        />
+      </group>
     </group>
   );
 }
