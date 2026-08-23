@@ -5,7 +5,7 @@ import type { Group } from "three";
 import { playerTransform } from "./playerTransform";
 import { useCombatStore, registerDistanceGetter } from "../combat/combatStore";
 import { decideAction, desiredApproach, DIFFICULTY } from "../ai/enemyAI";
-import BattleFighter from "../characters/BattleFighter";
+import RiggedFighter from "../characters/RiggedFighter";
 
 export const enemyTransform = {
   position: new THREE.Vector3(0, 0, -4),
@@ -17,6 +17,7 @@ const config = DIFFICULTY.pro;
 
 export default function Enemy() {
   const groupRef = useRef<Group>(null);
+  const movingRef = useRef(false);
   const decisionTimer = useRef(0);
 
   useEffect(() => {
@@ -35,10 +36,14 @@ export default function Enemy() {
     if (distance > 0.001) toPlayer.normalize();
 
     enemyTransform.facingYaw = Math.atan2(toPlayer.x, toPlayer.z);
+    movingRef.current = false;
 
     if (hitstop <= 0 && !roundOver && enemy.phase !== "down") {
       const approach = desiredApproach(enemy, distance, config);
-      if (approach !== 0) enemyTransform.position.addScaledVector(toPlayer, approach * dt);
+      if (approach !== 0) {
+        enemyTransform.position.addScaledVector(toPlayer, approach * dt);
+        movingRef.current = enemy.phase === "idle";
+      }
 
       if (enemy.knockback > 0.01) {
         enemyTransform.position.addScaledVector(toPlayer, -enemy.knockback * dt);
@@ -68,7 +73,7 @@ export default function Enemy() {
 
   return (
     <group ref={groupRef}>
-      <BattleFighter fighterId="enemy" energy="#ff4d6d" armorColor="#5a2740" />
+      <RiggedFighter fighterId="enemy" energy="#ff4d6d" tint="#8f2145" movingRef={movingRef} />
     </group>
   );
 }
