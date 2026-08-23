@@ -11,24 +11,27 @@ import BattleCamera from "../scene/BattleCamera";
 import CombatLoop from "../systems/CombatLoop";
 import DevBridge from "../systems/DevBridge";
 import BattleHUD from "./BattleHUD";
-import { useSwipeInput, useAttackKeys } from "../input/useSwipe";
-import { MOVE_BY_DIR, type SwipeDir } from "../combat/moves";
+import { useAttackKeys } from "../input/useSwipe";
+import { useJaxonGestureInput } from "../input/useJaxonGestures";
+import { MOVE_BY_DIR, type MoveId, type SwipeDir } from "../combat/moves";
 import { useCombatStore } from "../combat/combatStore";
 import { useScreenStore } from "../state/screenStore";
 import { playerTransform } from "../scene/playerTransform";
 
 function InputBridge() {
-  const handleDir = useCallback((dir: SwipeDir) => {
+  const perform = useCallback((moveId: MoveId) => {
     const store = useCombatStore.getState();
-    if (store.roundOver) return;
-    store.tryMove("player", MOVE_BY_DIR[dir]);
+    if (!store.roundOver) store.tryMove("player", moveId);
   }, []);
 
+  const handleDir = useCallback((dir: SwipeDir) => perform(MOVE_BY_DIR[dir]), [perform]);
   const handleGuard = useCallback((on: boolean) => {
     useCombatStore.getState().setGuard("player", on);
   }, []);
 
-  useSwipeInput({ onSwipe: handleDir });
+  // Touch/mouse strokes use the full 20-shape move sheet. Keyboard arrows remain
+  // a simple accessibility/debug mirror through the four primary directions.
+  useJaxonGestureInput(perform);
   useAttackKeys(handleDir, handleGuard);
 
   return null;
@@ -65,12 +68,7 @@ export default function BattleScreen() {
         <CombatLoop />
         <DevBridge />
         <EffectComposer>
-          <Bloom
-            intensity={1.05}
-            luminanceThreshold={0.68}
-            luminanceSmoothing={0.34}
-            mipmapBlur
-          />
+          <Bloom intensity={1.05} luminanceThreshold={0.68} luminanceSmoothing={0.34} mipmapBlur />
           <Vignette eskil={false} offset={0.12} darkness={0.88} />
         </EffectComposer>
       </Canvas>
@@ -87,8 +85,13 @@ export default function BattleScreen() {
         <span>Flashbang is built for landscape combat.</span>
       </div>
 
-      <button data-ui className="battle-home" onClick={() => navigate("home")}>
-        ← HOME
+      <button data-ui className="battle-home" onClick={() => navigate("home")}>← HOME</button>
+      <button
+        data-ui
+        onClick={() => navigate("play")}
+        style={{ position: "absolute", top: 54, left: 14, zIndex: 12, borderRadius: 999, border: "1px solid rgba(116,207,255,.35)", background: "rgba(5,10,20,.72)", color: "#dff5ff", padding: "7px 12px", fontSize: 8, fontWeight: 900, letterSpacing: 1.1, cursor: "pointer" }}
+      >
+        COSTUMES
       </button>
     </div>
   );
