@@ -15,11 +15,6 @@ function step(seconds: number) {
   for (let i = 0; i < n; i++) useCombatStore.getState().tick(STEP);
 }
 
-/**
- * Advance until the fighter is back in neutral. Hitstop freezes phase
- * advancement, so stepping a fixed wall-clock duration equal to the move
- * length leaves the attack unfinished whenever it connected.
- */
 function stepUntilIdle(id: "player" | "enemy" = "player", maxSeconds = 4) {
   let elapsed = 0;
   while (elapsed < maxSeconds) {
@@ -42,18 +37,15 @@ beforeEach(() => {
 describe("attack phases", () => {
   it("runs windup -> active -> recovery -> idle", () => {
     const store = useCombatStore.getState();
-    distance = 99; // out of range so nothing interrupts the phase walk
+    distance = 99;
     store.tryMove("player", "roundKick");
     const m = MOVES.roundKick;
 
     expect(useCombatStore.getState().player.phase).toBe("windup");
-
     step(m.windup + STEP);
     expect(useCombatStore.getState().player.phase).toBe("active");
-
     step(m.active + STEP);
     expect(useCombatStore.getState().player.phase).toBe("recovery");
-
     step(m.recovery + STEP);
     expect(useCombatStore.getState().player.phase).toBe("idle");
     expect(useCombatStore.getState().player.moveId).toBeNull();
@@ -73,17 +65,13 @@ describe("hit resolution", () => {
     distance = 2.0;
     useCombatStore.getState().tryMove("player", "roundKick");
     stepUntilIdle();
-
-    expect(useCombatStore.getState().enemy.condition).toBe(
-      MAX_CONDITION - MOVES.roundKick.damage,
-    );
+    expect(useCombatStore.getState().enemy.condition).toBe(MAX_CONDITION - MOVES.roundKick.damage);
   });
 
   it("whiffs when out of range", () => {
     distance = 8;
     useCombatStore.getState().tryMove("player", "roundKick");
     stepUntilIdle();
-
     expect(useCombatStore.getState().enemy.condition).toBe(MAX_CONDITION);
   });
 
@@ -91,20 +79,14 @@ describe("hit resolution", () => {
     distance = 2.0;
     useCombatStore.getState().tryMove("player", "spinKick");
     stepUntilIdle();
-
-    expect(useCombatStore.getState().enemy.condition).toBe(
-      MAX_CONDITION - MOVES.spinKick.damage,
-    );
+    expect(useCombatStore.getState().enemy.condition).toBe(MAX_CONDITION - MOVES.spinKick.damage);
   });
 
   it("staggers the target out of neutral", () => {
     distance = 2.0;
     useCombatStore.getState().tryMove("player", "roundKick");
     step(MOVES.roundKick.windup + 0.02);
-    // Just past hitstop, but well short of the stagger duration, so the
-    // stagger is still in flight when we observe it.
     step(MOVES.roundKick.hitstop + 0.02);
-
     expect(useCombatStore.getState().enemy.phase).toBe("stagger");
   });
 
@@ -112,7 +94,6 @@ describe("hit resolution", () => {
     distance = 2.0;
     useCombatStore.getState().tryMove("player", "risingKick");
     step(MOVES.risingKick.windup + 0.02);
-
     expect(useCombatStore.getState().hitstop).toBeGreaterThan(0);
     expect(useCombatStore.getState().shake).toBeGreaterThan(0);
   });
@@ -121,7 +102,6 @@ describe("hit resolution", () => {
     distance = 2.0;
     useCombatStore.getState().tryMove("player", "risingKick");
     step(MOVES.risingKick.windup + 0.02);
-
     const frozen = useCombatStore.getState().player.phaseElapsed;
     useCombatStore.getState().tick(STEP);
     expect(useCombatStore.getState().player.phaseElapsed).toBe(frozen);
@@ -134,7 +114,6 @@ describe("guard", () => {
     useCombatStore.getState().setGuard("enemy", true);
     useCombatStore.getState().tryMove("player", "roundKick");
     stepUntilIdle();
-
     const enemy = useCombatStore.getState().enemy;
     expect(enemy.condition).toBeGreaterThan(MAX_CONDITION - MOVES.roundKick.damage);
     expect(enemy.phase).not.toBe("stagger");
@@ -143,12 +122,9 @@ describe("guard", () => {
   it("does not stop a low sweep", () => {
     distance = 2.0;
     useCombatStore.getState().setGuard("enemy", true);
-    useCombatStore.getState().tryMove("player", "legSweep");
+    useCombatStore.getState().tryMove("player", "sweepKick");
     stepUntilIdle();
-
-    expect(useCombatStore.getState().enemy.condition).toBe(
-      MAX_CONDITION - MOVES.legSweep.damage,
-    );
+    expect(useCombatStore.getState().enemy.condition).toBe(MAX_CONDITION - MOVES.sweepKick.damage);
   });
 
   it("cannot be raised mid-attack", () => {
@@ -165,7 +141,6 @@ describe("combo counter", () => {
     useCombatStore.getState().tryMove("player", "roundKick");
     stepUntilIdle();
     expect(useCombatStore.getState().combo).toBe(1);
-
     useCombatStore.getState().tryMove("player", "roundKick");
     stepUntilIdle();
     expect(useCombatStore.getState().combo).toBe(2);
@@ -176,7 +151,6 @@ describe("combo counter", () => {
     useCombatStore.getState().tryMove("player", "roundKick");
     stepUntilIdle();
     expect(useCombatStore.getState().combo).toBe(1);
-
     distance = 99;
     step(2.0);
     expect(useCombatStore.getState().combo).toBe(0);
@@ -190,7 +164,6 @@ describe("knockout", () => {
       useCombatStore.getState().tryMove("player", "risingKick");
       stepUntilIdle();
     }
-
     const s = useCombatStore.getState();
     expect(s.winner).toBe("player");
     expect(s.roundOver).toBe(true);
@@ -212,7 +185,6 @@ describe("knockout", () => {
     useCombatStore.getState().tryMove("player", "roundKick");
     stepUntilIdle();
     useCombatStore.getState().reset();
-
     const s = useCombatStore.getState();
     expect(s.enemy.condition).toBe(MAX_CONDITION);
     expect(s.player.condition).toBe(MAX_CONDITION);
@@ -244,13 +216,7 @@ describe("enemy AI", () => {
   it("does not act while committed to a move", () => {
     distance = 99;
     useCombatStore.getState().tryMove("enemy", "roundKick");
-    const action = decideAction({
-      self: idle(),
-      opponent: useCombatStore.getState().player,
-      distance: 2,
-      config: DIFFICULTY.pro,
-      random: () => 0,
-    });
+    const action = decideAction({ self: idle(), opponent: useCombatStore.getState().player, distance: 2, config: DIFFICULTY.pro, random: () => 0 });
     expect(action.kind).toBe("none");
   });
 
@@ -259,27 +225,14 @@ describe("enemy AI", () => {
     useCombatStore.getState().tryMove("player", "roundKick");
     step(MOVES.roundKick.windup + MOVES.roundKick.active + 0.02);
     expect(useCombatStore.getState().player.phase).toBe("recovery");
-
-    const action = decideAction({
-      self: idle(),
-      opponent: useCombatStore.getState().player,
-      distance: 2,
-      config: DIFFICULTY.pro,
-      random: () => 0.99,
-    });
+    const action = decideAction({ self: idle(), opponent: useCombatStore.getState().player, distance: 2, config: DIFFICULTY.pro, random: () => 0.99 });
     expect(action.kind).toBe("attack");
   });
 
   it("sweeps a turtling opponent", () => {
     useCombatStore.getState().setGuard("player", true);
-    const action = decideAction({
-      self: idle(),
-      opponent: useCombatStore.getState().player,
-      distance: 2,
-      config: DIFFICULTY.pro,
-      random: () => 0.1,
-    });
-    expect(action).toEqual({ kind: "attack", moveId: "legSweep" });
+    const action = decideAction({ self: idle(), opponent: useCombatStore.getState().player, distance: 2, config: DIFFICULTY.pro, random: () => 0.1 });
+    expect(action).toEqual({ kind: "attack", moveId: "sweepKick" });
   });
 
   it("closes distance when too far and holds at preferred range", () => {
