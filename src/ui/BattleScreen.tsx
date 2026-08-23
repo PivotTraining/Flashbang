@@ -3,6 +3,7 @@ import { Canvas } from "@react-three/fiber";
 import { EffectComposer, Bloom, Vignette } from "@react-three/postprocessing";
 import * as THREE from "three";
 import Arena from "../scene/Arena";
+import ImportedStageProps from "../scene/ImportedStageProps";
 import ProceduralEnvironment from "../scene/ProceduralEnvironment";
 import BattlePlayer from "../scene/BattlePlayer";
 import Enemy, { enemyTransform } from "../scene/Enemy";
@@ -57,6 +58,7 @@ export default function BattleScreen() {
       >
         <ProceduralEnvironment intensity={0.68} />
         <Arena />
+        <ImportedStageProps />
         <BattlePlayer />
         <Enemy />
         <BattleCamera />
