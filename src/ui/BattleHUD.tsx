@@ -24,14 +24,14 @@ function ConditionBar({ value, align, label, accent }: { value: number; align: "
   );
 }
 
-const controlButton: React.CSSProperties = {
-  width: 58,
-  height: 58,
-  borderRadius: 18,
+const dpadButton: React.CSSProperties = {
+  width: 50,
+  height: 50,
+  borderRadius: 16,
   border: "1px solid rgba(255,255,255,.28)",
-  background: "rgba(8,10,22,.78)",
+  background: "rgba(8,10,22,.82)",
   color: "white",
-  fontSize: 22,
+  fontSize: 20,
   fontWeight: 900,
   display: "flex",
   alignItems: "center",
@@ -40,6 +40,21 @@ const controlButton: React.CSSProperties = {
   WebkitUserSelect: "none",
   touchAction: "none",
   boxShadow: "0 8px 22px rgba(0,0,0,.28)",
+};
+
+const attackButton: React.CSSProperties = {
+  minWidth: 78,
+  height: 44,
+  borderRadius: 14,
+  border: "1px solid rgba(255,255,255,.25)",
+  color: "white",
+  fontSize: 10,
+  fontWeight: 900,
+  letterSpacing: 0.35,
+  userSelect: "none",
+  WebkitUserSelect: "none",
+  touchAction: "none",
+  boxShadow: "0 7px 18px rgba(0,0,0,.28)",
 };
 
 export default function BattleHUD() {
@@ -83,25 +98,24 @@ export default function BattleHUD() {
 
       {lastHit && lastHit.attacker === "player" && <div key={lastHit.id} style={{ position: "absolute", top: 140, left: 30, fontSize: 13, fontWeight: 800, letterSpacing: 1, color: lastHit.blocked ? "#8fa3bf" : MOVES[lastHit.moveId].color, pointerEvents: "none", zIndex: 4 }}>{lastHit.blocked ? "BLOCKED" : MOVES[lastHit.moveId].name.toUpperCase()}</div>}
 
-      <div data-ui style={{ position: "absolute", left: 22, bottom: 26, width: 184, height: 184, zIndex: 8 }}>
-        <button data-ui aria-label="Move forward" style={{ ...controlButton, position: "absolute", left: 63, top: 0 }} onPointerDown={holdMove(0, -1)} onPointerUp={releaseMove} onPointerCancel={releaseMove} onPointerLeave={releaseMove}>↑</button>
-        <button data-ui aria-label="Move left" style={{ ...controlButton, position: "absolute", left: 0, top: 63 }} onPointerDown={holdMove(-1, 0)} onPointerUp={releaseMove} onPointerCancel={releaseMove} onPointerLeave={releaseMove}>←</button>
-        <button data-ui aria-label="Move right" style={{ ...controlButton, position: "absolute", right: 0, top: 63 }} onPointerDown={holdMove(1, 0)} onPointerUp={releaseMove} onPointerCancel={releaseMove} onPointerLeave={releaseMove}>→</button>
-        <button data-ui aria-label="Move back" style={{ ...controlButton, position: "absolute", left: 63, bottom: 0 }} onPointerDown={holdMove(0, 1)} onPointerUp={releaseMove} onPointerCancel={releaseMove} onPointerLeave={releaseMove}>↓</button>
+      <div data-ui style={{ position: "absolute", left: 14, bottom: 18, width: 156, height: 156, zIndex: 8 }}>
+        <button data-ui aria-label="Move forward" style={{ ...dpadButton, position: "absolute", left: 53, top: 0 }} onPointerDown={holdMove(0, -1)} onPointerUp={releaseMove} onPointerCancel={releaseMove} onPointerLeave={releaseMove}>↑</button>
+        <button data-ui aria-label="Move left" style={{ ...dpadButton, position: "absolute", left: 0, top: 53 }} onPointerDown={holdMove(-1, 0)} onPointerUp={releaseMove} onPointerCancel={releaseMove} onPointerLeave={releaseMove}>←</button>
+        <button data-ui aria-label="Move right" style={{ ...dpadButton, position: "absolute", right: 0, top: 53 }} onPointerDown={holdMove(1, 0)} onPointerUp={releaseMove} onPointerCancel={releaseMove} onPointerLeave={releaseMove}>→</button>
+        <button data-ui aria-label="Move back" style={{ ...dpadButton, position: "absolute", left: 53, bottom: 0 }} onPointerDown={holdMove(0, 1)} onPointerUp={releaseMove} onPointerCancel={releaseMove} onPointerLeave={releaseMove}>↓</button>
       </div>
 
-      <div data-ui style={{ position: "absolute", right: 22, bottom: 26, display: "grid", gridTemplateColumns: "repeat(2, minmax(92px, 1fr))", gap: 10, zIndex: 8 }}>
-        <button data-ui style={{ ...controlButton, width: 100, height: 54, fontSize: 12, background: "rgba(38,91,180,.85)" }} onPointerDown={() => attack("roundKick")}>PUNCH</button>
-        <button data-ui style={{ ...controlButton, width: 100, height: 54, fontSize: 12, background: "rgba(92,61,190,.85)" }} onPointerDown={() => attack("spinKick")}>SPIN</button>
-        <button data-ui style={{ ...controlButton, width: 100, height: 54, fontSize: 12, background: "rgba(184,104,30,.88)" }} onPointerDown={() => attack("risingKick")}>UP KICK</button>
-        <button data-ui style={{ ...controlButton, width: 100, height: 54, fontSize: 12, background: "rgba(170,42,98,.88)" }} onPointerDown={() => attack("legSweep")}>SWEEP</button>
-        <button data-ui style={{ ...controlButton, width: 100, height: 48, fontSize: 11, background: "rgba(25,120,153,.88)" }} onPointerDown={() => attack("ballThrow")}>POWER</button>
-        <button data-ui style={{ ...controlButton, width: 100, height: 48, fontSize: 11, background: player.guarding ? "rgba(52,190,115,.95)" : "rgba(25,90,62,.88)" }} onPointerDown={() => guard(true)} onPointerUp={() => guard(false)} onPointerCancel={() => guard(false)} onPointerLeave={() => guard(false)}>GUARD</button>
+      <div data-ui style={{ position: "absolute", right: 12, bottom: 18, display: "grid", gridTemplateColumns: "repeat(2, minmax(78px, 1fr))", gap: 7, zIndex: 8 }}>
+        <button data-ui style={{ ...attackButton, background: "rgba(38,91,180,.92)" }} onPointerDown={() => attack("punch")}>PUNCH</button>
+        <button data-ui style={{ ...attackButton, background: "rgba(45,115,180,.9)" }} onPointerDown={() => attack("roundKick")}>ROUND KICK</button>
+        <button data-ui style={{ ...attackButton, background: "rgba(92,61,190,.9)" }} onPointerDown={() => attack("spinKick")}>SPIN KICK</button>
+        <button data-ui style={{ ...attackButton, background: "rgba(184,104,30,.92)" }} onPointerDown={() => attack("risingKick")}>UP KICK</button>
+        <button data-ui style={{ ...attackButton, background: "rgba(170,42,98,.92)" }} onPointerDown={() => attack("legSweep")}>SWEEP</button>
+        <button data-ui style={{ ...attackButton, background: "rgba(111,64,188,.94)" }} onPointerDown={() => attack("ballThrow")}>POWER</button>
+        <button data-ui style={{ ...attackButton, gridColumn: "1 / span 2", background: player.guarding ? "rgba(52,190,115,.98)" : "rgba(25,90,62,.92)" }} onPointerDown={() => guard(true)} onPointerUp={() => guard(false)} onPointerCancel={() => guard(false)} onPointerLeave={() => guard(false)}>HOLD GUARD</button>
       </div>
 
       {winner && <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", background: "rgba(4,2,12,0.72)", zIndex: 10 }}><div style={{ fontSize: 52, fontWeight: 900, fontStyle: "italic", letterSpacing: 2, color: winner === "player" ? "#ffd23f" : "#ff4d6d", textShadow: "0 0 30px currentColor" }}>{winner === "player" ? "K.O." : "DEFEATED"}</div><button data-ui onClick={reset} style={{ marginTop: 26, background: "rgba(255,255,255,0.1)", border: "1px solid rgba(255,255,255,0.45)", color: "#fff", fontSize: 13, fontWeight: 800, letterSpacing: 1.2, padding: "12px 30px", borderRadius: 8, cursor: "pointer" }}>FIGHT AGAIN</button></div>}
-
-      <div style={{ position: "absolute", bottom: 8, left: "50%", transform: "translateX(-50%)", textAlign: "center", fontSize: 10, letterSpacing: 0.8, color: "rgba(255,255,255,0.5)", pointerEvents: "none", zIndex: 4 }}>MOVE LEFT · ATTACK RIGHT · swipes and keyboard still work</div>
     </>
   );
 }
