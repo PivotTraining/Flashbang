@@ -44,7 +44,6 @@ export default function BattleFighter({ fighterId, energy, armorColor }: Props) 
     let rootY = Math.sin(t.current * 3.2) * 0.012;
     let bodyX = 0;
     let bodyY = 0;
-    let bodyZ = 0;
     let bodyRY = 0;
     let bodyRZ = 0;
     let leftArmX = 0.04;
