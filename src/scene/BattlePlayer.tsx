@@ -6,13 +6,14 @@ import { playerTransform } from "./playerTransform";
 import { enemyTransform } from "./Enemy";
 import { useMovementInput } from "../input/useKeyboard";
 import { useCombatStore } from "../combat/combatStore";
-import BattleFighter from "../characters/BattleFighter";
+import RiggedFighter from "../characters/RiggedFighter";
 
 const MOVE_SPEED = 4.6;
 const ARENA_RADIUS = 9;
 
 export default function BattlePlayer() {
   const groupRef = useRef<Group>(null);
+  const movingRef = useRef(false);
   const moveIntent = useMovementInput();
 
   useFrame((_, rawDt) => {
@@ -25,6 +26,7 @@ export default function BattlePlayer() {
     else toEnemy.set(0, 0, -1);
 
     playerTransform.facingYaw = Math.atan2(toEnemy.x, toEnemy.z);
+    movingRef.current = false;
 
     if (hitstop <= 0) {
       const canMove = player.phase === "idle" && !roundOver;
@@ -38,6 +40,7 @@ export default function BattlePlayer() {
           .normalize();
         const speed = player.guarding ? MOVE_SPEED * 0.45 : MOVE_SPEED;
         playerTransform.position.addScaledVector(move, speed * dt);
+        movingRef.current = true;
       }
 
       if (player.knockback > 0.01) {
@@ -60,7 +63,7 @@ export default function BattlePlayer() {
 
   return (
     <group ref={groupRef}>
-      <BattleFighter fighterId="player" energy="#4da3ff" armorColor="#233a66" />
+      <RiggedFighter fighterId="player" energy="#4da3ff" tint="#285fbd" movingRef={movingRef} />
     </group>
   );
 }
