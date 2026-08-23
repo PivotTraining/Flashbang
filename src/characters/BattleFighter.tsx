@@ -24,9 +24,10 @@ export default function BattleFighter({ fighterId, energy, armorColor }: Props) 
   const aura = useRef<Mesh>(null);
   const t = useRef(0);
 
-  const armorMat = useMemo(() => new THREE.MeshStandardMaterial({ color: armorColor, metalness: 0.62, roughness: 0.33 }), [armorColor]);
-  const darkMat = useMemo(() => new THREE.MeshStandardMaterial({ color: "#0b1020", metalness: 0.4, roughness: 0.5 }), []);
-  const skinMat = useMemo(() => new THREE.MeshStandardMaterial({ color: "#7a4d37", roughness: 0.68 }), []);
+  const armorMat = useMemo(() => new THREE.MeshStandardMaterial({ color: armorColor, metalness: 0.48, roughness: 0.4 }), [armorColor]);
+  const clothMat = useMemo(() => new THREE.MeshStandardMaterial({ color: "#111522", metalness: 0.08, roughness: 0.72 }), []);
+  const darkMat = useMemo(() => new THREE.MeshStandardMaterial({ color: "#080b13", metalness: 0.28, roughness: 0.56 }), []);
+  const skinMat = useMemo(() => new THREE.MeshStandardMaterial({ color: fighterId === "player" ? "#754832" : "#76503f", roughness: 0.72 }), [fighterId]);
   const glowMat = useMemo(() => new THREE.MeshStandardMaterial({ color: energy, emissive: new THREE.Color(energy), emissiveIntensity: 4.8, roughness: 0.16, toneMapped: false }), [energy]);
 
   useFrame((_, dt) => {
@@ -180,35 +181,60 @@ export default function BattleFighter({ fighterId, energy, armorColor }: Props) 
   const limb = (side: -1 | 1, kind: "arm" | "leg", ref: React.RefObject<Group>) => {
     const isArm = kind === "arm";
     const x = side * (isArm ? 0.43 : 0.2);
-    const y = isArm ? 1.72 : 1.03;
-    const upperLen = isArm ? 0.43 : 0.52;
-    const lowerLen = isArm ? 0.4 : 0.5;
-    const radius = isArm ? 0.105 : 0.13;
+    const y = isArm ? 1.72 : 1.05;
+    const upperLen = isArm ? 0.44 : 0.54;
+    const lowerLen = isArm ? 0.4 : 0.52;
+    const radius = isArm ? 0.095 : 0.125;
+
     return (
       <group ref={ref} position={[x, y, 0]}>
+        {isArm && (
+          <mesh position={[0, -0.03, 0]} scale={[1.25, 0.75, 1.35]} castShadow>
+            <sphereGeometry args={[0.13, 14, 10]} />
+            <primitive object={armorMat} attach="material" />
+          </mesh>
+        )}
         <mesh position={[0, -upperLen / 2, 0]} castShadow>
-          <capsuleGeometry args={[radius, upperLen - radius * 1.1, 8, 14]} />
-          <primitive object={armorMat} attach="material" />
+          <capsuleGeometry args={[radius, upperLen - radius * 1.15, 8, 14]} />
+          <primitive object={isArm ? clothMat : armorMat} attach="material" />
         </mesh>
         <mesh position={[0, -upperLen, 0]} castShadow>
-          <sphereGeometry args={[radius * 0.9, 14, 14]} />
+          <sphereGeometry args={[radius * 0.88, 14, 14]} />
           <primitive object={darkMat} attach="material" />
         </mesh>
         <mesh position={[0, -upperLen - lowerLen / 2, 0]} castShadow>
-          <capsuleGeometry args={[radius * 0.92, lowerLen - radius, 8, 14]} />
+          <capsuleGeometry args={[radius * 0.88, lowerLen - radius, 8, 14]} />
           <primitive object={armorMat} attach="material" />
         </mesh>
-        <mesh position={[0, -upperLen - lowerLen - 0.05, isArm ? 0.03 : 0.08]} castShadow>
-          <boxGeometry args={isArm ? [0.18, 0.17, 0.22] : [0.24, 0.16, 0.38]} />
-          <primitive object={darkMat} attach="material" />
-        </mesh>
-        <mesh position={[0, -upperLen * 0.55, radius * 0.92]}>
-          <boxGeometry args={[0.035, upperLen * 0.52, 0.025]} />
+        {isArm ? (
+          <mesh position={[0, -upperLen - lowerLen - 0.055, 0.035]} castShadow>
+            <boxGeometry args={[0.17, 0.16, 0.22]} />
+            <primitive object={darkMat} attach="material" />
+          </mesh>
+        ) : (
+          <>
+            <mesh position={[0, -upperLen - 0.04, 0.085]} castShadow>
+              <boxGeometry args={[0.19, 0.17, 0.16]} />
+              <primitive object={darkMat} attach="material" />
+            </mesh>
+            <mesh position={[0, -upperLen - lowerLen - 0.055, 0.105]} castShadow>
+              <boxGeometry args={[0.23, 0.15, 0.42]} />
+              <primitive object={darkMat} attach="material" />
+            </mesh>
+          </>
+        )}
+        <mesh position={[0, -upperLen * 0.58, radius * 0.94]}>
+          <boxGeometry args={[0.032, upperLen * 0.48, 0.022]} />
           <primitive object={glowMat} attach="material" />
         </mesh>
       </group>
     );
   };
+
+  const hairSpikes = [
+    [-0.13, 0.22, -0.04, -0.3], [-0.04, 0.27, -0.06, -0.08], [0.06, 0.27, -0.05, 0.12],
+    [0.15, 0.21, -0.04, 0.32], [-0.18, 0.14, -0.07, -0.52], [0.19, 0.13, -0.07, 0.52],
+  ] as const;
 
   return (
     <group ref={root} scale={1.12}>
@@ -217,37 +243,68 @@ export default function BattleFighter({ fighterId, energy, armorColor }: Props) 
         {limb(1, "leg", rightLeg)}
 
         <mesh position={[0, 1.2, 0]} castShadow>
-          <boxGeometry args={[0.52, 0.24, 0.32]} />
+          <boxGeometry args={[0.5, 0.22, 0.3]} />
           <primitive object={darkMat} attach="material" />
         </mesh>
-        <mesh position={[0, 1.58, 0]} castShadow>
-          <capsuleGeometry args={[0.3, 0.48, 10, 18]} />
+        <mesh position={[0, 1.53, 0]} castShadow>
+          <cylinderGeometry args={[0.29, 0.36, 0.62, 10]} />
+          <primitive object={clothMat} attach="material" />
+        </mesh>
+        <mesh position={[0, 1.67, 0.17]} castShadow>
+          <boxGeometry args={[0.56, 0.34, 0.16]} />
           <primitive object={armorMat} attach="material" />
         </mesh>
-        <mesh position={[0, 1.69, 0.23]}>
-          <sphereGeometry args={[0.07, 20, 20]} />
+        <mesh position={[0, 1.68, 0.265]}>
+          <boxGeometry args={[0.22, 0.055, 0.025]} />
           <primitive object={glowMat} attach="material" />
+        </mesh>
+        <mesh position={[0, 1.93, 0]} castShadow>
+          <cylinderGeometry args={[0.075, 0.09, 0.14, 10]} />
+          <primitive object={skinMat} attach="material" />
+        </mesh>
+
+        <mesh position={[0, 1.14, 0.17]}>
+          <boxGeometry args={[0.6, 0.08, 0.08]} />
+          <primitive object={glowMat} attach="material" />
+        </mesh>
+        <mesh position={[-0.18, 0.82, -0.08]} rotation={[0.18, 0.08, 0.05]} castShadow>
+          <planeGeometry args={[0.28, 0.74]} />
+          <meshStandardMaterial color="#11131f" roughness={0.78} side={THREE.DoubleSide} />
+        </mesh>
+        <mesh position={[0.18, 0.82, -0.08]} rotation={[0.18, -0.08, -0.05]} castShadow>
+          <planeGeometry args={[0.28, 0.74]} />
+          <meshStandardMaterial color="#151827" roughness={0.78} side={THREE.DoubleSide} />
         </mesh>
 
         {limb(-1, "arm", leftArm)}
         {limb(1, "arm", rightArm)}
 
-        <group ref={head} position={[0, 2.12, 0]}>
-          <mesh castShadow>
+        <group ref={head} position={[0, 2.13, 0]}>
+          <mesh castShadow scale={[0.92, 1.05, 0.92]}>
             <sphereGeometry args={[0.19, 24, 20]} />
             <primitive object={skinMat} attach="material" />
           </mesh>
-          <mesh position={[0, 0.1, -0.02]} castShadow>
-            <sphereGeometry args={[0.205, 20, 16, 0, Math.PI * 2, 0, Math.PI * 0.52]} />
+          <mesh position={[0, 0.11, -0.04]} scale={[1.05, 0.72, 1.04]} castShadow>
+            <sphereGeometry args={[0.205, 20, 16]} />
             <primitive object={darkMat} attach="material" />
           </mesh>
-          <mesh position={[-0.065, 0.025, 0.177]}>
+          {hairSpikes.map(([x, y, z, rot], i) => (
+            <mesh key={i} position={[x, y, z]} rotation={[0.2, 0, rot]} castShadow>
+              <coneGeometry args={[0.055, 0.24, 6]} />
+              <primitive object={darkMat} attach="material" />
+            </mesh>
+          ))}
+          <mesh position={[-0.064, 0.025, 0.176]} scale={[1.5, 0.48, 0.55]}>
             <sphereGeometry args={[0.018, 12, 12]} />
             <primitive object={glowMat} attach="material" />
           </mesh>
-          <mesh position={[0.065, 0.025, 0.177]}>
+          <mesh position={[0.064, 0.025, 0.176]} scale={[1.5, 0.48, 0.55]}>
             <sphereGeometry args={[0.018, 12, 12]} />
             <primitive object={glowMat} attach="material" />
+          </mesh>
+          <mesh position={[0, -0.025, 0.182]} scale={[0.38, 0.55, 0.42]}>
+            <sphereGeometry args={[0.032, 10, 10]} />
+            <primitive object={skinMat} attach="material" />
           </mesh>
         </group>
       </group>
