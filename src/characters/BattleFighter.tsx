@@ -12,7 +12,6 @@ interface Props {
 }
 
 const clamp01 = (v: number) => Math.max(0, Math.min(1, v));
-const easeIn = (t: number) => t * t;
 const easeOut = (t: number) => 1 - (1 - t) * (1 - t) * (1 - t);
 const easeInOut = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
 const lerp = THREE.MathUtils.lerp;
@@ -121,7 +120,6 @@ export default function BattleFighter({ fighterId, energy, armorColor }: Props) 
     const leftLeg = neutralLeg(-1);
     const rightLeg = neutralLeg(1);
 
-    // Fighting stance: shoulders alive, elbows bent, weight alternating.
     leftArm.upperX += idlePulse * 0.035;
     rightArm.upperX -= idlePulse * 0.035;
     leftLeg.upperX += idlePulse * 0.018;
@@ -160,7 +158,6 @@ export default function BattleFighter({ fighterId, energy, armorColor }: Props) 
 
       switch (fighter.moveId) {
         case "punch": {
-          // Coil the shoulder back, then snap hip/torso/arm through together.
           if (fighter.phase === "windup") {
             bodyRY = lerp(0, 0.42, wind);
             rootZ = lerp(0, -0.1, wind);
@@ -189,7 +186,6 @@ export default function BattleFighter({ fighterId, energy, armorColor }: Props) 
             rootY -= 0.08 * wind;
             bodyRY = 0.55 * wind;
             bodyRZ = -0.1 * wind;
-            rightThigh.current.position.y = 1.05;
             rightLeg.upperX = lerp(-0.03, -0.62, wind);
             rightLeg.upperZ = lerp(0.03, -0.46, wind);
             rightLeg.lowerX = lerp(0.1, 1.3, wind);
