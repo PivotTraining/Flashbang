@@ -6,36 +6,26 @@ import type { Group } from "three";
 import { GLTFLoader, type GLTF } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { clone as cloneSkinned } from "three/examples/jsm/utils/SkeletonUtils.js";
 import { useCombatStore, type FighterId } from "../combat/combatStore";
-import { MOVES } from "../combat/moves";
+import { JAXON_MOVE_IDS, MOVES, totalMoveDuration, type MoveId } from "../combat/moves";
+import { COSTUMES, useFighterStyleStore } from "../state/fighterStyleStore";
 import BattleFighter from "./BattleFighter";
 
-// Pinned audited CC0 assets from Quaternius, converted to browser-ready GLB in
-// the public Blood League repository. Keeping the commit pinned prevents an
-// upstream change from silently changing Flashbang's character at runtime.
 const ASSET_COMMIT = "aa02a4e6d8337a0604d2da131bcbbeb1f01badf0";
 const ASSET_ROOT = `https://raw.githubusercontent.com/Seyamalam/blood-league-kickoff/${ASSET_COMMIT}/public/assets/vendor/quaternius`;
 const CHARACTER_URL = `${ASSET_ROOT}/night-striker.glb`;
 const ANIMATION_URL = `${ASSET_ROOT}/universal-animation-library.glb`;
 
-// Player and enemy share the same source downloads. Each fighter still gets
-// its own skinned clone and AnimationMixer, but the large GLBs are fetched and
-// parsed only once per page load.
 let sharedAssetsPromise: Promise<[GLTF, GLTF]> | null = null;
 function loadRiggedAssets() {
   if (!sharedAssetsPromise) {
     const loader = new GLTFLoader();
-    sharedAssetsPromise = Promise.all([
-      loader.loadAsync(CHARACTER_URL),
-      loader.loadAsync(ANIMATION_URL),
-    ]);
+    sharedAssetsPromise = Promise.all([loader.loadAsync(CHARACTER_URL), loader.loadAsync(ANIMATION_URL)]);
   }
   return sharedAssetsPromise;
 }
 
 interface Props {
   fighterId: FighterId;
-  energy: string;
-  tint: string;
   movingRef: MutableRefObject<boolean>;
 }
 
@@ -44,14 +34,9 @@ type ClipMap = {
   move: string | null;
   sprint: string | null;
   guard: string | null;
-  punch: string | null;
-  roundKick: string | null;
-  spinKick: string | null;
-  risingKick: string | null;
-  legSweep: string | null;
-  power: string | null;
   hit: string | null;
   down: string | null;
+  moves: Partial<Record<MoveId, string | null>>;
 };
 
 function firstContaining(names: string[], groups: string[][]) {
@@ -64,24 +49,31 @@ function firstContaining(names: string[], groups: string[][]) {
 }
 
 function buildClipMap(names: string[]): ClipMap {
-  const kicks = names.filter((name) => name.toLowerCase().includes("kick"));
+  const punches = names.filter((name) => /punch|fist|elbow|strike|attack/i.test(name));
+  const kicks = names.filter((name) => /kick|knee/i.test(name));
+  const moves: Partial<Record<MoveId, string | null>> = {};
+
+  const ids = [...JAXON_MOVE_IDS, "ballThrow", "punch", "risingKick", "legSweep", "roundKick", "spinKick"] as MoveId[];
+  ids.forEach((id, index) => {
+    const def = MOVES[id];
+    const exact = firstContaining(names, def.animationHints);
+    if (exact) {
+      moves[id] = exact;
+      return;
+    }
+    if (def.category === "punch") moves[id] = punches[index % Math.max(punches.length, 1)] ?? null;
+    else if (def.category === "kick") moves[id] = kicks[index % Math.max(kicks.length, 1)] ?? null;
+    else if (def.category === "power") moves[id] = firstContaining(names, [["spell"], ["shoot"], ["cast"], ["attack"]]);
+  });
+
   return {
     idle: firstContaining(names, [["idle", "loop"], ["idle"]]),
     move: firstContaining(names, [["jog", "fwd"], ["jog"], ["walk", "fwd"], ["walk"]]),
     sprint: firstContaining(names, [["sprint", "loop"], ["sprint"], ["run", "fwd"], ["run"]]),
     guard: firstContaining(names, [["block"], ["guard"], ["defend"], ["idle", "loop"]]),
-    punch: firstContaining(names, [["punch", "cross"], ["punch"], ["attack"]]),
-    roundKick:
-      firstContaining(names, [["round", "kick"], ["side", "kick"]]) ?? kicks[0] ?? null,
-    spinKick:
-      firstContaining(names, [["spin", "kick"], ["spinning", "kick"]]) ?? kicks[1] ?? kicks[0] ?? null,
-    risingKick:
-      firstContaining(names, [["high", "kick"], ["front", "kick"], ["up", "kick"]]) ?? kicks[2] ?? kicks[0] ?? null,
-    legSweep:
-      firstContaining(names, [["sweep"], ["low", "kick"]]) ?? kicks[3] ?? kicks[0] ?? null,
-    power: firstContaining(names, [["spell", "simple", "shoot"], ["spell", "shoot"], ["shoot"], ["cast"]]),
-    hit: firstContaining(names, [["hit", "a"], ["hit"], ["react"]]),
-    down: firstContaining(names, [["death"], ["fall"], ["knock", "down"], ["hit"]]),
+    hit: firstContaining(names, [["hit", "a"], ["hit"], ["damage"], ["react"]]),
+    down: firstContaining(names, [["death"], ["knock", "down"], ["fall"], ["hit"]]),
+    moves,
   };
 }
 
@@ -90,19 +82,27 @@ function pickClip(map: ClipMap, fighterId: FighterId, moving: boolean) {
   if (fighter.phase === "down") return map.down ?? map.hit ?? map.idle;
   if (fighter.phase === "stagger") return map.hit ?? map.idle;
   if (fighter.guarding) return map.guard ?? map.idle;
-  if (fighter.moveId) {
-    if (fighter.moveId === "punch") return map.punch ?? map.idle;
-    if (fighter.moveId === "roundKick") return map.roundKick ?? map.punch ?? map.idle;
-    if (fighter.moveId === "spinKick") return map.spinKick ?? map.roundKick ?? map.idle;
-    if (fighter.moveId === "risingKick") return map.risingKick ?? map.roundKick ?? map.idle;
-    if (fighter.moveId === "legSweep") return map.legSweep ?? map.roundKick ?? map.idle;
-    if (fighter.moveId === "ballThrow") return map.power ?? map.punch ?? map.idle;
-  }
+  if (fighter.moveId) return map.moves[fighter.moveId] ?? map.idle;
   if (moving) return map.sprint ?? map.move ?? map.idle;
   return map.idle;
 }
 
-export default function RiggedFighter({ fighterId, energy, tint, movingRef }: Props) {
+function moveProgress(fighterId: FighterId) {
+  const fighter = useCombatStore.getState()[fighterId];
+  if (!fighter.moveId) return 0;
+  const move = MOVES[fighter.moveId];
+  const total = totalMoveDuration(move);
+  let elapsed = fighter.phaseElapsed;
+  if (fighter.phase === "active") elapsed += move.windup;
+  if (fighter.phase === "recovery") elapsed += move.windup + move.active;
+  return total > 0 ? Math.max(0, Math.min(1, elapsed / total)) : 0;
+}
+
+export default function RiggedFighter({ fighterId, movingRef }: Props) {
+  const costumeId = useFighterStyleStore((s) => fighterId === "player" ? s.playerCostume : s.enemyCostume);
+  const costume = COSTUMES[costumeId];
+  const energy = costume.energy;
+
   const [model, setModel] = useState<Group | null>(null);
   const [failed, setFailed] = useState(false);
   const mixerRef = useRef<THREE.AnimationMixer | null>(null);
@@ -113,18 +113,18 @@ export default function RiggedFighter({ fighterId, energy, tint, movingRef }: Pr
   const previousMoveRef = useRef<string | null>(null);
   const glowRef = useRef<THREE.Mesh>(null);
   const loadingCoreRef = useRef<THREE.Mesh>(null);
+  const motionRef = useRef<THREE.Group>(null);
   const pulse = useRef(0);
 
   const glowMaterial = useMemo(
-    () =>
-      new THREE.MeshBasicMaterial({
-        color: energy,
-        transparent: true,
-        opacity: fighterId === "player" ? 0.46 : 0.32,
-        blending: THREE.AdditiveBlending,
-        depthWrite: false,
-        toneMapped: false,
-      }),
+    () => new THREE.MeshBasicMaterial({
+      color: energy,
+      transparent: true,
+      opacity: fighterId === "player" ? 0.46 : 0.32,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+      toneMapped: false,
+    }),
     [energy, fighterId],
   );
 
@@ -138,11 +138,16 @@ export default function RiggedFighter({ fighterId, energy, tint, movingRef }: Pr
       .then(([character, animationLibrary]) => {
         if (cancelled) return;
         imported = cloneSkinned(character.scene) as Group;
-        imported.name = `flashbang-${fighterId}-rigged`;
-        imported.rotation.y = Math.PI;
+        imported.name = `flashbang-${fighterId}-${costumeId}`;
+        // IMPORTANT: the source character is authored facing +Z. Our lock-on yaw
+        // also aims local +Z at the opponent, so adding PI here made fighters face away.
+        imported.rotation.y = 0;
         imported.scale.setScalar(fighterId === "player" ? 1.04 : 1.08);
 
-        const tintColor = new THREE.Color(tint);
+        const base = new THREE.Color(costume.base);
+        const secondary = new THREE.Color(costume.secondary);
+        const accent = new THREE.Color(costume.accent);
+
         imported.traverse((node) => {
           if (!(node instanceof THREE.Mesh)) return;
           node.castShadow = true;
@@ -152,8 +157,18 @@ export default function RiggedFighter({ fighterId, energy, tint, movingRef }: Pr
             const copy = surface.clone();
             ownedMaterials.push(copy);
             if (copy instanceof THREE.MeshStandardMaterial) {
-              copy.color.lerp(tintColor, fighterId === "player" ? 0.12 : 0.2);
-              copy.roughness = Math.min(0.72, Math.max(0.32, copy.roughness));
+              const identity = `${node.name} ${copy.name}`.toLowerCase();
+              const protectedSurface = /skin|face|head|hair|eye|teeth|mouth/.test(identity);
+              if (protectedSurface) {
+                copy.color.lerp(secondary, .035);
+              } else {
+                copy.color.lerp(base, costume.clothTint * .45);
+                copy.color.lerp(secondary, costume.clothTint);
+                copy.metalness = Math.max(copy.metalness, costume.metalness);
+                copy.roughness = THREE.MathUtils.lerp(copy.roughness, costume.roughness, .48);
+                copy.emissive.copy(accent);
+                copy.emissiveIntensity = .09;
+              }
             }
             return copy;
           });
@@ -187,7 +202,7 @@ export default function RiggedFighter({ fighterId, energy, tint, movingRef }: Pr
       clipsRef.current = null;
       mixerRef.current = null;
     };
-  }, [fighterId, tint]);
+  }, [fighterId, costumeId, costume.accent, costume.base, costume.clothTint, costume.metalness, costume.roughness, costume.secondary]);
 
   useFrame((_, rawDt) => {
     const dt = Math.min(rawDt, 0.05);
@@ -200,16 +215,28 @@ export default function RiggedFighter({ fighterId, energy, tint, movingRef }: Pr
       loadingCoreRef.current.scale.setScalar(breathe);
     }
 
-    const mixer = mixerRef.current;
-    const map = clipsRef.current;
-    if (!mixer || !map) return;
-
     const state = useCombatStore.getState();
     const fighter = state[fighterId];
+    const mixer = mixerRef.current;
+    const map = clipsRef.current;
+
+    if (motionRef.current) {
+      const progress = moveProgress(fighterId);
+      motionRef.current.rotation.y = 0;
+      motionRef.current.position.y = 0;
+      if (fighter.moveId === "spinningBackKick" || fighter.moveId === "spinKick") {
+        motionRef.current.rotation.y = progress * Math.PI * 2;
+      } else if (fighter.moveId === "roundKickRight") {
+        motionRef.current.rotation.y = Math.sin(progress * Math.PI) * .3;
+      } else if (fighter.moveId === "roundKickLeft") {
+        motionRef.current.rotation.y = -Math.sin(progress * Math.PI) * .3;
+      }
+      if (fighter.moveId === "jumpKick") motionRef.current.position.y = Math.sin(progress * Math.PI) * .36;
+    }
+
+    if (!mixer || !map) return;
     const desired = pickClip(map, fighterId, movingRef.current);
-    const attackStarted =
-      fighter.phase === "windup" &&
-      (previousPhaseRef.current !== "windup" || previousMoveRef.current !== fighter.moveId);
+    const attackStarted = fighter.phase === "windup" && (previousPhaseRef.current !== "windup" || previousMoveRef.current !== fighter.moveId);
     const reactionStarted = fighter.phase === "stagger" && previousPhaseRef.current !== "stagger";
     const downStarted = fighter.phase === "down" && previousPhaseRef.current !== "down";
 
@@ -217,26 +244,20 @@ export default function RiggedFighter({ fighterId, energy, tint, movingRef }: Pr
       const next = actionsRef.current.get(desired);
       if (next) {
         const previous = activeRef.current ? actionsRef.current.get(activeRef.current) : undefined;
-        if (previous && previous !== next) previous.fadeOut(0.08);
-
+        if (previous && previous !== next) previous.fadeOut(.07);
         next.reset();
         const oneShot = fighter.phase !== "idle" || fighter.moveId !== null || fighter.guarding;
         next.setLoop(oneShot ? THREE.LoopOnce : THREE.LoopRepeat, oneShot ? 1 : Infinity);
         next.clampWhenFinished = oneShot;
 
-        if (fighter.moveId && MOVES[fighter.moveId]) {
-          const targetDuration =
-            MOVES[fighter.moveId].windup + MOVES[fighter.moveId].active + MOVES[fighter.moveId].recovery;
-          if (targetDuration > 0.05 && next.getClip().duration > 0.05) {
-            next.setEffectiveTimeScale(next.getClip().duration / targetDuration);
-          }
-        } else if (fighter.phase === "stagger" && fighter.staggerDuration > 0.05) {
+        if (fighter.moveId) {
+          const targetDuration = totalMoveDuration(MOVES[fighter.moveId]);
+          if (targetDuration > .05 && next.getClip().duration > .05) next.setEffectiveTimeScale(next.getClip().duration / targetDuration);
+        } else if (fighter.phase === "stagger" && fighter.staggerDuration > .05) {
           next.setEffectiveTimeScale(next.getClip().duration / fighter.staggerDuration);
-        } else {
-          next.setEffectiveTimeScale(1);
-        }
+        } else next.setEffectiveTimeScale(1);
 
-        next.fadeIn(0.08).play();
+        next.fadeIn(.07).play();
         activeRef.current = desired;
       }
     }
@@ -245,10 +266,10 @@ export default function RiggedFighter({ fighterId, energy, tint, movingRef }: Pr
 
     if (glowRef.current) {
       const powerActive = fighter.moveId === "ballThrow" && fighter.phase !== "recovery";
-      const target = powerActive ? 1.35 : fighter.guarding ? 0.85 : 0.48;
-      const breathe = 1 + Math.sin(pulse.current * 5.5) * 0.06;
+      const target = powerActive ? 1.35 : fighter.guarding ? .85 : .48;
+      const breathe = 1 + Math.sin(pulse.current * 5.5) * .06;
       glowRef.current.scale.set(target * breathe, target * breathe, target * breathe);
-      glowMaterial.opacity = powerActive ? 0.68 : fighter.guarding ? 0.38 : 0.16;
+      glowMaterial.opacity = powerActive ? .68 : fighter.guarding ? .38 : .16;
     }
 
     previousPhaseRef.current = fighter.phase;
@@ -257,14 +278,14 @@ export default function RiggedFighter({ fighterId, energy, tint, movingRef }: Pr
 
   if (!model && !failed) {
     return (
-      <group position={[0, 1.0, 0]}>
+      <group position={[0, 1, 0]}>
         <mesh ref={loadingCoreRef}>
-          <octahedronGeometry args={[0.34, 1]} />
-          <meshBasicMaterial color={energy} wireframe transparent opacity={0.82} toneMapped={false} />
+          <octahedronGeometry args={[.34, 1]} />
+          <meshBasicMaterial color={energy} wireframe transparent opacity={.82} toneMapped={false} />
         </mesh>
         <mesh rotation={[Math.PI / 2, 0, 0]}>
-          <torusGeometry args={[0.62, 0.025, 8, 42]} />
-          <meshBasicMaterial color={energy} transparent opacity={0.5} toneMapped={false} />
+          <torusGeometry args={[.62, .025, 8, 42]} />
+          <meshBasicMaterial color={energy} transparent opacity={.5} toneMapped={false} />
         </mesh>
         <pointLight color={energy} intensity={2.4} distance={3.6} />
       </group>
@@ -272,28 +293,17 @@ export default function RiggedFighter({ fighterId, energy, tint, movingRef }: Pr
   }
 
   if (!model && failed) {
-    return (
-      <BattleFighter
-        fighterId={fighterId}
-        energy={energy}
-        armorColor={fighterId === "player" ? "#233a66" : "#5a2740"}
-      />
-    );
+    return <BattleFighter fighterId={fighterId} energy={energy} armorColor={costume.secondary} />;
   }
 
   return (
-    <group>
+    <group ref={motionRef}>
       {model && <primitive object={model} />}
       <mesh ref={glowRef} position={[0, 1.05, 0]} rotation={[Math.PI / 2, 0, 0]}>
-        <torusGeometry args={[0.54, 0.035, 10, 48]} />
+        <torusGeometry args={[.54, .035, 10, 48]} />
         <primitive object={glowMaterial} attach="material" />
       </mesh>
-      <pointLight
-        position={[0, 1.45, 0.4]}
-        color={energy}
-        intensity={fighterId === "player" ? 1.8 : 1.25}
-        distance={3.2}
-      />
+      <pointLight position={[0, 1.45, .4]} color={energy} intensity={fighterId === "player" ? 1.8 : 1.25} distance={3.2} />
     </group>
   );
 }
