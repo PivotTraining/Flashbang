@@ -4,6 +4,7 @@ import * as THREE from "three";
 import type { Group } from "three";
 import { playerTransform } from "./playerTransform";
 import { useCombatStore, registerDistanceGetter } from "../combat/combatStore";
+import { MOVES } from "../combat/moves";
 import { decideAction, desiredApproach, DIFFICULTY } from "../ai/enemyAI";
 import RiggedFighter from "../characters/RiggedFighter";
 
@@ -13,6 +14,7 @@ export const enemyTransform = {
 };
 
 const ARENA_RADIUS = 9;
+const CONTACT_DISTANCE = 1.05;
 const config = DIFFICULTY.pro;
 
 export default function Enemy() {
@@ -34,6 +36,7 @@ export default function Enemy() {
     toPlayer.y = 0;
     const distance = toPlayer.length();
     if (distance > 0.001) toPlayer.normalize();
+    else toPlayer.set(0, 0, 1);
 
     enemyTransform.facingYaw = Math.atan2(toPlayer.x, toPlayer.z);
     movingRef.current = false;
@@ -43,6 +46,14 @@ export default function Enemy() {
       if (approach !== 0) {
         enemyTransform.position.addScaledVector(toPlayer, approach * dt);
         movingRef.current = enemy.phase === "idle";
+      }
+
+      if (enemy.moveId && MOVES[enemy.moveId].category !== "power" && MOVES[enemy.moveId].category !== "movement") {
+        if ((enemy.phase === "windup" || enemy.phase === "active") && distance > CONTACT_DISTANCE) {
+          const speed = enemy.phase === "active" ? 4.6 : 2.0;
+          const step = Math.min(speed * dt, Math.max(0, distance - CONTACT_DISTANCE));
+          enemyTransform.position.addScaledVector(toPlayer, step);
+        }
       }
 
       if (enemy.knockback > 0.01) enemyTransform.position.addScaledVector(toPlayer, -enemy.knockback * dt);
