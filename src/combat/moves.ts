@@ -1,13 +1,9 @@
-// Move library. Data-driven per the handoff doc (§18): moves are data, not
-// hard-coded branches, so new ones are added here rather than in the engine.
-//
-// Pace note: simple directional flicks fire instantly, which is what keeps
-// the fight fast. Multi-stroke patterns are reserved for specials, matching
-// "simple attacks: easy patterns / secret attacks: harder patterns".
+// Move library. Data-driven so new moves are added here rather than hard-coded in the engine.
 
 export type SwipeDir = "up" | "down" | "left" | "right" | "forward";
 
 export type MoveId =
+  | "punch"
   | "risingKick"
   | "legSweep"
   | "roundKick"
@@ -18,29 +14,36 @@ export type MoveId =
 export interface MoveDef {
   id: MoveId;
   name: string;
-  /** Single-flick trigger. Multi-stroke specials come in a later pass. */
   dir: SwipeDir;
-  /** Seconds from input to the hit window opening. Low = fast, punishable if missed. */
   windup: number;
-  /** How long the hit window stays open. */
   active: number;
-  /** Recovery after the window; the punish gap if you whiff. */
   recovery: number;
   damage: number;
-  /** Max distance from attacker to defender for the hit to land. */
   range: number;
   knockback: number;
-  /** Hitstop on connect, in seconds — the freeze that sells the impact. */
   hitstop: number;
   shake: number;
-  /** Can the defender block this? Sweeps hit low, so no. */
   blockable: boolean;
-  /** Staggers the target out of their own attack. */
   launches?: boolean;
   color: string;
 }
 
 export const MOVES: Record<MoveId, MoveDef> = {
+  punch: {
+    id: "punch",
+    name: "Flash Punch",
+    dir: "left",
+    windup: 0.07,
+    active: 0.11,
+    recovery: 0.13,
+    damage: 7,
+    range: 2.35,
+    knockback: 1.4,
+    hitstop: 0.055,
+    shake: 0.17,
+    blockable: true,
+    color: "#36b9ff",
+  },
   roundKick: {
     id: "roundKick",
     name: "Round Kick",
@@ -99,26 +102,24 @@ export const MOVES: Record<MoveId, MoveDef> = {
     knockback: 1.4,
     hitstop: 0.1,
     shake: 0.36,
-    // hits low — beats a standing guard, which is what makes blocking a
-    // read rather than a permanent answer
     blockable: false,
     launches: true,
     color: "#ff6b9d",
   },
   ballThrow: {
     id: "ballThrow",
-    name: "Ball Throw",
+    name: "Energy Blast",
     dir: "forward",
-    windup: 0.12,
-    active: 0.05,
-    recovery: 0.26,
+    windup: 0.24,
+    active: 0.16,
+    recovery: 0.28,
     damage: 12,
     range: 22,
     knockback: 2.4,
     hitstop: 0.08,
     shake: 0.3,
     blockable: true,
-    color: "#ff9d3d",
+    color: "#9f6bff",
   },
   dash: {
     id: "dash",
@@ -140,7 +141,7 @@ export const MOVES: Record<MoveId, MoveDef> = {
 export const MOVE_BY_DIR: Record<SwipeDir, MoveId> = {
   up: "risingKick",
   down: "legSweep",
-  left: "roundKick",
+  left: "punch",
   right: "spinKick",
   forward: "ballThrow",
 };
