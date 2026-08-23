@@ -3,7 +3,7 @@ import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 import type { MutableRefObject } from "react";
 import type { Group } from "three";
-import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
+import { GLTFLoader, type GLTF } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { clone as cloneSkinned } from "three/examples/jsm/utils/SkeletonUtils.js";
 import { useCombatStore, type FighterId } from "../combat/combatStore";
 import { MOVES } from "../combat/moves";
@@ -16,6 +16,21 @@ const ASSET_COMMIT = "aa02a4e6d8337a0604d2da131bcbbeb1f01badf0";
 const ASSET_ROOT = `https://raw.githubusercontent.com/Seyamalam/blood-league-kickoff/${ASSET_COMMIT}/public/assets/vendor/quaternius`;
 const CHARACTER_URL = `${ASSET_ROOT}/night-striker.glb`;
 const ANIMATION_URL = `${ASSET_ROOT}/universal-animation-library.glb`;
+
+// Player and enemy share the same source downloads. Each fighter still gets
+// its own skinned clone and AnimationMixer, but the large GLBs are fetched and
+// parsed only once per page load.
+let sharedAssetsPromise: Promise<[GLTF, GLTF]> | null = null;
+function loadRiggedAssets() {
+  if (!sharedAssetsPromise) {
+    const loader = new GLTFLoader();
+    sharedAssetsPromise = Promise.all([
+      loader.loadAsync(CHARACTER_URL),
+      loader.loadAsync(ANIMATION_URL),
+    ]);
+  }
+  return sharedAssetsPromise;
+}
 
 interface Props {
   fighterId: FighterId;
@@ -89,6 +104,7 @@ function pickClip(map: ClipMap, fighterId: FighterId, moving: boolean) {
 
 export default function RiggedFighter({ fighterId, energy, tint, movingRef }: Props) {
   const [model, setModel] = useState<Group | null>(null);
+  const [failed, setFailed] = useState(false);
   const mixerRef = useRef<THREE.AnimationMixer | null>(null);
   const actionsRef = useRef(new Map<string, THREE.AnimationAction>());
   const clipsRef = useRef<ClipMap | null>(null);
@@ -96,6 +112,7 @@ export default function RiggedFighter({ fighterId, energy, tint, movingRef }: Pr
   const previousPhaseRef = useRef<string>("idle");
   const previousMoveRef = useRef<string | null>(null);
   const glowRef = useRef<THREE.Mesh>(null);
+  const loadingCoreRef = useRef<THREE.Mesh>(null);
   const pulse = useRef(0);
 
   const glowMaterial = useMemo(
@@ -116,9 +133,8 @@ export default function RiggedFighter({ fighterId, energy, tint, movingRef }: Pr
     let imported: Group | null = null;
     let mixer: THREE.AnimationMixer | null = null;
     const ownedMaterials: THREE.Material[] = [];
-    const loader = new GLTFLoader();
 
-    Promise.all([loader.loadAsync(CHARACTER_URL), loader.loadAsync(ANIMATION_URL)])
+    loadRiggedAssets()
       .then(([character, animationLibrary]) => {
         if (cancelled) return;
         imported = cloneSkinned(character.scene) as Group;
@@ -136,7 +152,6 @@ export default function RiggedFighter({ fighterId, energy, tint, movingRef }: Pr
             const copy = surface.clone();
             ownedMaterials.push(copy);
             if (copy instanceof THREE.MeshStandardMaterial) {
-              // Mild color grade: retain skin/hair/textures while separating teams.
               copy.color.lerp(tintColor, fighterId === "player" ? 0.12 : 0.2);
               copy.roughness = Math.min(0.72, Math.max(0.32, copy.roughness));
             }
@@ -153,10 +168,12 @@ export default function RiggedFighter({ fighterId, energy, tint, movingRef }: Pr
           actionsRef.current.set(clip.name, mixer.clipAction(clip));
         }
         clipsRef.current = buildClipMap(names);
+        setFailed(false);
         setModel(imported);
       })
       .catch((error: unknown) => {
         console.warn("Rigged fighter assets unavailable; using procedural fallback.", error);
+        if (!cancelled) setFailed(true);
       });
 
     return () => {
@@ -175,6 +192,14 @@ export default function RiggedFighter({ fighterId, energy, tint, movingRef }: Pr
   useFrame((_, rawDt) => {
     const dt = Math.min(rawDt, 0.05);
     pulse.current += dt;
+
+    if (loadingCoreRef.current && !model && !failed) {
+      const breathe = 1 + Math.sin(pulse.current * 7) * 0.14;
+      loadingCoreRef.current.rotation.y += dt * 2.8;
+      loadingCoreRef.current.rotation.z += dt * 1.7;
+      loadingCoreRef.current.scale.setScalar(breathe);
+    }
+
     const mixer = mixerRef.current;
     const map = clipsRef.current;
     if (!mixer || !map) return;
@@ -216,7 +241,6 @@ export default function RiggedFighter({ fighterId, energy, tint, movingRef }: Pr
       }
     }
 
-    // Respect hitstop: freeze the real skeleton on the impact frame too.
     if (state.hitstop <= 0) mixer.update(dt);
 
     if (glowRef.current) {
@@ -231,7 +255,23 @@ export default function RiggedFighter({ fighterId, energy, tint, movingRef }: Pr
     previousMoveRef.current = fighter.moveId;
   });
 
-  if (!model) {
+  if (!model && !failed) {
+    return (
+      <group position={[0, 1.0, 0]}>
+        <mesh ref={loadingCoreRef}>
+          <octahedronGeometry args={[0.34, 1]} />
+          <meshBasicMaterial color={energy} wireframe transparent opacity={0.82} toneMapped={false} />
+        </mesh>
+        <mesh rotation={[Math.PI / 2, 0, 0]}>
+          <torusGeometry args={[0.62, 0.025, 8, 42]} />
+          <meshBasicMaterial color={energy} transparent opacity={0.5} toneMapped={false} />
+        </mesh>
+        <pointLight color={energy} intensity={2.4} distance={3.6} />
+      </group>
+    );
+  }
+
+  if (!model && failed) {
     return (
       <BattleFighter
         fighterId={fighterId}
@@ -243,7 +283,7 @@ export default function RiggedFighter({ fighterId, energy, tint, movingRef }: Pr
 
   return (
     <group>
-      <primitive object={model} />
+      {model && <primitive object={model} />}
       <mesh ref={glowRef} position={[0, 1.05, 0]} rotation={[Math.PI / 2, 0, 0]}>
         <torusGeometry args={[0.54, 0.035, 10, 48]} />
         <primitive object={glowMaterial} attach="material" />
