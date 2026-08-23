@@ -31,6 +31,23 @@ function length(points: Point[]) {
   return sum;
 }
 
+function maxChordDeviation(points: Point[]) {
+  if (points.length < 3) return 0;
+  const a = points[0];
+  const b = points[points.length - 1];
+  const dx = b.x - a.x;
+  const dy = b.y - a.y;
+  const chord = Math.hypot(dx, dy);
+  if (chord < 0.001) return 1;
+  let max = 0;
+  for (let i = 1; i < points.length - 1; i += 1) {
+    const p = points[i];
+    const perpendicular = Math.abs(dy * p.x - dx * p.y + b.x * a.y - b.y * a.x) / chord;
+    max = Math.max(max, perpendicular);
+  }
+  return max / chord;
+}
+
 function resample(points: Point[], count = 24) {
   if (points.length < 2) return points;
   const total = length(points);
@@ -87,12 +104,13 @@ export function classifyJaxonGesture(points: Point[], startY = 0, viewportHeight
   if (direct < MIN_DIST && travel < MIN_DIST * 1.25) return null;
 
   const straightness = direct / Math.max(travel, 1);
+  const curvature = maxChordDeviation(points);
   const absX = Math.abs(dx);
   const absY = Math.abs(dy);
 
-  // Jaxon's chart intentionally reuses a straight-right arrow for several moves.
-  // We disambiguate those by stroke size and where the swipe begins on the combat surface.
-  if (dx > 0 && absY < absX * 0.22 && straightness > 0.88) {
+  // Jaxon's straight-right family only qualifies if the stroke is actually straight.
+  // A shallow rainbow/scoop must fall through to the Sweep template.
+  if (dx > 0 && absY < absX * 0.22 && straightness > 0.88 && curvature < 0.055) {
     const y = startY / Math.max(viewportHeight, 1);
     if (direct < 72) return "jab";
     if (direct > 180) return "sideKick";
@@ -100,12 +118,9 @@ export function classifyJaxonGesture(points: Point[], startY = 0, viewportHeight
     return "straightPunch";
   }
 
-  // Three moves share the same up-right family on the original sheet.
-  // Preserve that family but use physical stroke size as the explicit modifier:
-  // short = knee, medium = front kick, huge = jump kick.
   if (
     dx > 0 && dy < 0 &&
-    straightness > 0.82 &&
+    straightness > 0.82 && curvature < 0.08 &&
     absX > absY * 0.55 && absY > absX * 0.45
   ) {
     if (direct < 135) return "kneeStrike";
