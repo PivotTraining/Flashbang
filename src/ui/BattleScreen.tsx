@@ -1,6 +1,6 @@
 import { useCallback, useEffect } from "react";
 import { Canvas } from "@react-three/fiber";
-import { EffectComposer, Bloom } from "@react-three/postprocessing";
+import { EffectComposer, Bloom, Vignette } from "@react-three/postprocessing";
 import * as THREE from "three";
 import Arena from "../scene/Arena";
 import ProceduralEnvironment from "../scene/ProceduralEnvironment";
@@ -27,8 +27,6 @@ function InputBridge() {
     useCombatStore.getState().setGuard("player", on);
   }, []);
 
-  // Pointer swipes and keys are two routes to the same intent, mirroring the
-  // input-router split in the handoff doc (§16) — neither knows about moves.
   useSwipeInput({ onSwipe: handleDir });
   useAttackKeys(handleDir, handleGuard);
 
@@ -40,33 +38,24 @@ export default function BattleScreen() {
   const reset = useCombatStore((s) => s.reset);
 
   useEffect(() => {
-    // Fresh round on entry, and place the fighters apart so the fight opens
-    // at approach range rather than already touching.
     reset();
     playerTransform.position.set(0, 0, 3.2);
     enemyTransform.position.set(0, 0, -3.2);
   }, [reset]);
 
   return (
-    <div
-      style={{
-        position: "relative",
-        width: "100vw",
-        height: "100vh",
-        touchAction: "none",
-        cursor: "crosshair",
-      }}
-    >
+    <div className="battle-shell">
       <Canvas
         shadows
-        dpr={[1, 1.5]}
-        camera={{ fov: 58, position: [0, 3, 10] }}
+        dpr={[1, 1.6]}
+        camera={{ fov: 52, position: [0, 3, 10] }}
         onCreated={({ gl }) => {
           gl.toneMapping = THREE.ACESFilmicToneMapping;
-          gl.toneMappingExposure = 1.05;
+          gl.toneMappingExposure = 0.88;
+          gl.outputColorSpace = THREE.SRGBColorSpace;
         }}
       >
-        <ProceduralEnvironment intensity={0.5} />
+        <ProceduralEnvironment intensity={0.68} />
         <Arena />
         <BattlePlayer />
         <Enemy />
@@ -75,34 +64,30 @@ export default function BattleScreen() {
         <DevBridge />
         <EffectComposer>
           <Bloom
-            intensity={0.8}
-            luminanceThreshold={0.82}
-            luminanceSmoothing={0.25}
+            intensity={1.05}
+            luminanceThreshold={0.68}
+            luminanceSmoothing={0.34}
             mipmapBlur
           />
+          <Vignette eskil={false} offset={0.12} darkness={0.88} />
         </EffectComposer>
       </Canvas>
       <InputBridge />
       <BattleHUD />
-      <button data-ui style={backStyle} onClick={() => navigate("home")}>
-        ← Home
+
+      <div className="stage-chip" aria-hidden="true">
+        <span>THUNDER SUMMIT</span>
+        <small>SUMMIT ARENA · ROUND 01</small>
+      </div>
+
+      <div className="rotate-hint" aria-hidden="true">
+        <strong>ROTATE YOUR PHONE</strong>
+        <span>Flashbang is built for landscape combat.</span>
+      </div>
+
+      <button data-ui className="battle-home" onClick={() => navigate("home")}>
+        ← HOME
       </button>
     </div>
   );
 }
-
-const backStyle: React.CSSProperties = {
-  position: "absolute",
-  top: 14,
-  left: 16,
-  background: "rgba(0,0,0,0.45)",
-  border: "1px solid rgba(255,255,255,0.4)",
-  color: "#fff",
-  fontSize: 12,
-  fontWeight: 700,
-  letterSpacing: 0.6,
-  padding: "8px 14px",
-  borderRadius: 8,
-  cursor: "pointer",
-  zIndex: 7,
-};
