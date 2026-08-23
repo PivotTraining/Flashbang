@@ -1,12 +1,10 @@
 import { create } from "zustand";
 
-// Screen router for the prototype shell. "training" is the playable loop;
-// everything else is part of the home/menu wrapper per the LOCKED home
-// screen spec.
 export type Screen =
   | "home"
   | "training"
   | "play"
+  | "battle"
   | "ranked"
   | "story"
   | "events"
