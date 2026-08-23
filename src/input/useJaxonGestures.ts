@@ -108,8 +108,6 @@ export function classifyJaxonGesture(points: Point[], startY = 0, viewportHeight
   const absX = Math.abs(dx);
   const absY = Math.abs(dy);
 
-  // Jaxon's straight-right family only qualifies if the stroke is actually straight.
-  // A shallow rainbow/scoop must fall through to the Sweep template.
   if (dx > 0 && absY < absX * 0.22 && straightness > 0.88 && curvature < 0.055) {
     const y = startY / Math.max(viewportHeight, 1);
     if (direct < 72) return "jab";
@@ -118,9 +116,12 @@ export function classifyJaxonGesture(points: Point[], startY = 0, viewportHeight
     return "straightPunch";
   }
 
+  // Jaxon's up-right family uses stroke size as the explicit modifier.
+  // Do this before template matching because Front Kick and Jump Kick share
+  // almost the same normalized silhouette and cannot be separated by shape alone.
   if (
     dx > 0 && dy < 0 &&
-    straightness > 0.82 && curvature < 0.08 &&
+    straightness > 0.72 &&
     absX > absY * 0.55 && absY > absX * 0.45
   ) {
     if (direct < 135) return "kneeStrike";
