@@ -15,7 +15,12 @@ export const DIFFICULTY: Record<"rookie" | "pro" | "legend", AIConfig> = {
   legend: { preferredRange: 2.0, decisionInterval: 0.3, aggression: 0.85, defensiveness: 0.38, moveSpeed: 4.1 },
 };
 
-const MELEE: MoveId[] = ["punch", "roundKick", "spinKick", "risingKick", "legSweep"];
+const MELEE: MoveId[] = [
+  "jab", "straightPunch", "uppercut", "hookPunchRight", "hookPunchLeft",
+  "roundKickRight", "roundKickLeft", "frontKick", "sideKick", "backKick",
+  "sweepKick", "axeKick", "spinningBackKick", "jumpKick", "kneeStrike",
+  "hammerFist", "overhandPunch", "elbowStrike", "bodyPunch", "doublePunch",
+];
 
 export type AIAction =
   | { kind: "none" }
@@ -35,7 +40,7 @@ export function decideAction(ctx: AIContext): AIAction {
   if (self.phase !== "idle") return { kind: "none" };
 
   const inRange = distance <= config.preferredRange + 0.5;
-  if (inRange && opponent.phase === "recovery") return { kind: "attack", moveId: "risingKick" };
+  if (inRange && opponent.phase === "recovery") return { kind: "attack", moveId: "uppercut" };
 
   if (opponent.phase === "windup" && random() < config.defensiveness) {
     return { kind: "guard", on: true };
@@ -44,7 +49,7 @@ export function decideAction(ctx: AIContext): AIAction {
   if (!inRange) return { kind: "guard", on: false };
 
   if (random() < config.aggression) {
-    if (opponent.guarding && random() < 0.7) return { kind: "attack", moveId: "legSweep" };
+    if (opponent.guarding && random() < 0.7) return { kind: "attack", moveId: "sweepKick" };
     const pick = MELEE[Math.floor(random() * MELEE.length) % MELEE.length];
     return { kind: "attack", moveId: pick };
   }
