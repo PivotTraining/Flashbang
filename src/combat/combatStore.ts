@@ -1,34 +1,17 @@
 import { create } from "zustand";
 import { MOVES, totalMoveDuration, type MoveId } from "./moves";
 
-// Real-time combat state for both fighters.
-//
-// Kept free of three.js so the whole fight can be stepped headlessly in
-// tests — same reason ballStore reads positions through a registered getter
-// rather than touching the scene graph.
-
 export type FighterId = "player" | "enemy";
-
-export type Phase =
-  | "idle"
-  | "windup"
-  | "active"
-  | "recovery"
-  | "stagger"
-  | "down";
+export type Phase = "idle" | "windup" | "active" | "recovery" | "stagger" | "down";
 
 export interface Fighter {
   condition: number;
   phase: Phase;
   moveId: MoveId | null;
-  /** Time spent in the current phase. */
   phaseElapsed: number;
-  /** One hit per attack — prevents an active window ticking damage every frame. */
   hasHit: boolean;
-  /** Guard is a held state; it blocks high attacks but not sweeps. */
   guarding: boolean;
   staggerDuration: number;
-  /** Facing/knockback impulse the renderer consumes and decays. */
   knockback: number;
 }
 
@@ -51,8 +34,6 @@ function makeFighter(): Fighter {
   };
 }
 
-// Distance between fighters, supplied by the scene each frame. Defaults to
-// out-of-range so headless tests start from a known neutral.
 let getDistance: () => number = () => 99;
 export function registerDistanceGetter(fn: () => number) {
   getDistance = fn;
@@ -69,23 +50,15 @@ export interface HitEvent {
 interface CombatStore {
   player: Fighter;
   enemy: Fighter;
-
-  /** Global freeze on connect — the pause that sells an impact. */
   hitstop: number;
   shake: number;
-
   combo: number;
   comboTimer: number;
-  /** Latest hit, for VFX + floating damage numbers. */
   lastHit: HitEvent | null;
   hitCounter: number;
-
   winner: FighterId | null;
   roundOver: boolean;
-
-  /** AI scratch state: seconds until the enemy next considers acting. */
   aiCooldown: number;
-
   canAct: (id: FighterId) => boolean;
   tryMove: (id: FighterId, moveId: MoveId) => boolean;
   setGuard: (id: FighterId, on: boolean) => void;
@@ -96,7 +69,6 @@ interface CombatStore {
 export const useCombatStore = create<CombatStore>((set, get) => ({
   player: makeFighter(),
   enemy: makeFighter(),
-
   hitstop: 0,
   shake: 0,
   combo: 0,
@@ -130,8 +102,6 @@ export const useCombatStore = create<CombatStore>((set, get) => ({
 
   setGuard: (id, on) => {
     const f = get()[id];
-    // Guard only engages from neutral — you can't block out of an attack,
-    // which is what makes whiffing punishable.
     if (f.phase !== "idle") return;
     set({ [id]: { ...f, guarding: on } } as Partial<CombatStore>);
   },
@@ -145,6 +115,7 @@ export const useCombatStore = create<CombatStore>((set, get) => ({
       combo: 0,
       comboTimer: 0,
       lastHit: null,
+      hitCounter: 0,
       winner: null,
       roundOver: false,
       aiCooldown: 0.9,
@@ -153,8 +124,6 @@ export const useCombatStore = create<CombatStore>((set, get) => ({
   tick: (dt) => {
     const s = get();
 
-    // Hitstop freezes the simulation, not the render loop, so the frozen
-    // frame stays on screen while nothing advances.
     if (s.hitstop > 0) {
       set({
         hitstop: Math.max(0, s.hitstop - dt),
@@ -175,8 +144,6 @@ export const useCombatStore = create<CombatStore>((set, get) => ({
 
     let hitstop = 0;
     let shake = next.shake as number;
-    // Zero it here rather than on `next` — the local is what gets written at
-    // the end, so setting next.combo would be silently overwritten.
     let combo = comboLapsed ? 0 : s.combo;
     let comboTimer = next.comboTimer as number;
     let lastHit = s.lastHit;
@@ -214,9 +181,7 @@ export const useCombatStore = create<CombatStore>((set, get) => ({
         if (!f.hasHit && distance <= move.range && other.phase !== "down") {
           f.hasHit = true;
           const blocked = other.guarding && move.blockable;
-          const damage = blocked
-            ? Math.round(move.damage * BLOCK_CHIP_FRACTION)
-            : move.damage;
+          const damage = blocked ? Math.round(move.damage * BLOCK_CHIP_FRACTION) : move.damage;
 
           other.condition = Math.max(0, other.condition - damage);
           other.knockback = blocked ? move.knockback * 0.35 : move.knockback;
@@ -224,9 +189,7 @@ export const useCombatStore = create<CombatStore>((set, get) => ({
           if (!blocked) {
             other.phase = "stagger";
             other.phaseElapsed = 0;
-            other.staggerDuration = move.launches
-              ? LAUNCH_STAGGER_DURATION
-              : STAGGER_DURATION;
+            other.staggerDuration = move.launches ? LAUNCH_STAGGER_DURATION : STAGGER_DURATION;
             other.moveId = null;
             other.guarding = false;
           }
@@ -240,13 +203,7 @@ export const useCombatStore = create<CombatStore>((set, get) => ({
           }
 
           hitCounter += 1;
-          lastHit = {
-            id: hitCounter,
-            attacker: id,
-            moveId: move.id,
-            damage,
-            blocked,
-          };
+          lastHit = { id: hitCounter, attacker: id, moveId: move.id, damage, blocked };
 
           if (other.condition <= 0) {
             other.phase = "down";
