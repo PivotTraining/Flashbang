@@ -100,6 +100,19 @@ export function classifyJaxonGesture(points: Point[], startY = 0, viewportHeight
     return "straightPunch";
   }
 
+  // Three moves share the same up-right family on the original sheet.
+  // Preserve that family but use physical stroke size as the explicit modifier:
+  // short = knee, medium = front kick, huge = jump kick.
+  if (
+    dx > 0 && dy < 0 &&
+    straightness > 0.82 &&
+    absX > absY * 0.55 && absY > absX * 0.45
+  ) {
+    if (direct < 135) return "kneeStrike";
+    if (direct > 270) return "jumpKick";
+    return "frontKick";
+  }
+
   let best: { move: MoveId; score: number } | null = null;
   for (const template of TEMPLATES) {
     const score = distance(points, template.points);
@@ -109,7 +122,7 @@ export function classifyJaxonGesture(points: Point[], startY = 0, viewportHeight
   if (!best || best.score > 0.33) {
     if (dy < 0 && absY > absX * 1.2) return "uppercut";
     if (dy > 0 && absY > absX * 1.2) return "axeKick";
-    if (dx > 0 && dy < 0) return direct < 95 ? "kneeStrike" : "jumpKick";
+    if (dx > 0 && dy < 0) return direct < 135 ? "kneeStrike" : direct > 270 ? "jumpKick" : "frontKick";
     if (dx > 0 && dy > 0) return "hammerFist";
   }
   return best?.move ?? null;
