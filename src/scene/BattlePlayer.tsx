@@ -43,9 +43,7 @@ export default function BattlePlayer() {
         movingRef.current = true;
       }
 
-      if (player.knockback > 0.01) {
-        playerTransform.position.addScaledVector(toEnemy, -player.knockback * dt);
-      }
+      if (player.knockback > 0.01) playerTransform.position.addScaledVector(toEnemy, -player.knockback * dt);
 
       const radial = Math.hypot(playerTransform.position.x, playerTransform.position.z);
       if (radial > ARENA_RADIUS) {
@@ -63,7 +61,7 @@ export default function BattlePlayer() {
 
   return (
     <group ref={groupRef}>
-      <RiggedFighter fighterId="player" energy="#4da3ff" tint="#285fbd" movingRef={movingRef} />
+      <RiggedFighter fighterId="player" movingRef={movingRef} />
     </group>
   );
 }
