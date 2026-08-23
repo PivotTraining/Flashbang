@@ -116,15 +116,12 @@ export function classifyJaxonGesture(points: Point[], startY = 0, viewportHeight
     return "straightPunch";
   }
 
-  // Jaxon's up-right family uses stroke size as the explicit modifier.
-  // Do this before template matching because Front Kick and Jump Kick share
-  // almost the same normalized silhouette and cannot be separated by shape alone.
   if (
     dx > 0 && dy < 0 &&
     straightness > 0.72 &&
     absX > absY * 0.55 && absY > absX * 0.45
   ) {
-    if (direct < 135) return "kneeStrike";
+    if (direct < 160) return "kneeStrike";
     if (direct > 270) return "jumpKick";
     return "frontKick";
   }
@@ -138,7 +135,7 @@ export function classifyJaxonGesture(points: Point[], startY = 0, viewportHeight
   if (!best || best.score > 0.33) {
     if (dy < 0 && absY > absX * 1.2) return "uppercut";
     if (dy > 0 && absY > absX * 1.2) return "axeKick";
-    if (dx > 0 && dy < 0) return direct < 135 ? "kneeStrike" : direct > 270 ? "jumpKick" : "frontKick";
+    if (dx > 0 && dy < 0) return direct < 160 ? "kneeStrike" : direct > 270 ? "jumpKick" : "frontKick";
     if (dx > 0 && dy > 0) return "hammerFist";
   }
   return best?.move ?? null;
