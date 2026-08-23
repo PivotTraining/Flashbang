@@ -45,9 +45,7 @@ export default function Enemy() {
         movingRef.current = enemy.phase === "idle";
       }
 
-      if (enemy.knockback > 0.01) {
-        enemyTransform.position.addScaledVector(toPlayer, -enemy.knockback * dt);
-      }
+      if (enemy.knockback > 0.01) enemyTransform.position.addScaledVector(toPlayer, -enemy.knockback * dt);
 
       const radial = Math.hypot(enemyTransform.position.x, enemyTransform.position.z);
       if (radial > ARENA_RADIUS) {
@@ -73,7 +71,7 @@ export default function Enemy() {
 
   return (
     <group ref={groupRef}>
-      <RiggedFighter fighterId="enemy" energy="#ff4d6d" tint="#8f2145" movingRef={movingRef} />
+      <RiggedFighter fighterId="enemy" movingRef={movingRef} />
     </group>
   );
 }
